@@ -1,0 +1,350 @@
+#!/usr/bin/env node
+// @todo: test post payload in handler.php
+// @todo: find a way to get certbot to be interactive, or replace with working js implementation
+// @todo: write a serverless plugin to set x-amazon-apigateway-binary-media-types for binary content types 
+// @todo: finish copydb command to include creating new database before import as well as change password and update db settings in wp-config
+// @todo: modify copydb command to insert sql to activate and setup wp static output plugin
+// @todo: write compile command to run wp static output plugin
+// @todo: write docs
+// @todo: open source?
+
+'use strict';
+
+const asciify = require('asciify');
+const DSNParser = require('dsn-parser');
+const exec = require('child_process').exec;
+const fs = require('fs');
+const fse = require('fs-extra');
+const fstream = require('fstream');
+const MysqlTools = require('mysql-tools');
+const os = require('os');
+const path = require('path');
+const program = require('commander');
+const request = require('request');
+const shell = require('shelljs');
+const tarball = require('tarball-extract');
+const unzip = require('unzip');
+
+program
+  .command('setup <domain>')
+  .description('Setup pressless')
+  .option("-e, --env <env>", "Environment to use")
+  .option("-r, --region <region>", "Region to use")
+  .option("-v, --verbose", "Show events as they occur")
+  .action(function(domain, options) {
+    // look for wp-config.php
+    if (!fs.existsSync('wp-config.php')) {
+        return console.log('Pressless: Unable to find a valid Wordpress installation.  Please run pressless inside your Wordpress directory.');
+    }
+ 
+    domain = domain.toLowerCase();
+    const name = domain.replace(/[\.\_\']/g, '-');
+
+    const packageJson = `{
+  "name": "${name}",
+  "dependencies": {
+    "serverless": "^1.0.0",
+    "serverless-domain-manager": "^1.1.0"
+  }
+}`;
+
+    const serverlessYml = `service: ${name}
+provider:
+  name: aws
+  runtime: nodejs6.10
+
+package:
+  exclude:
+    - '*'
+    - '**'
+  include:
+    - handler.js
+    - handler.php
+    - php
+    - wordpress/**
+    - Evolution.php
+    - lib/**
+
+plugins:
+  - serverless-domain-manager
+
+custom:
+  customDomain:
+    basePath:
+    domainName: ${domain}
+    stage: ${options.env||'dev'}
+
+functions:
+  ${name}:
+    handler: handler.handle
+    cors: true
+    events:
+      - http: ANY /
+      - http: ANY {proxy+}
+    timeout: 300`;
+
+    fse.mkdirsSync('.pressless');
+    fs.writeFileSync('.pressless/package.json', packageJson);
+    fs.writeFileSync('.pressless/serverless.yml', serverlessYml);
+
+    shell.cd('.pressless');
+    var npmInstall = shell.exec('npm install', {silent: true}).stdout;
+    fse.copySync(path.resolve(path.dirname(__dirname),'./serverless-domain-manager.js'), 'node_modules/serverless-domain-manager/index.js');
+    console.log('Pressless: Setup complete.');
+}); 
+
+program
+  .command('tls')
+  .description('Setup TLS')
+  .option("-e, --email <email>", "LetsEncrypt account email")
+  .option("-d, --domains <domains>", "Comma separated list of domains to get certificates for")
+  .action(function(options) {
+    if (!fs.existsSync('.pressless/serverless.yml')) {
+        return console.log('Pressless: You must first call "pressless setup".');
+    }
+   
+    if (!options.email) { console.log('--email required'); return false; }
+    if (!options.domains) { console.log('--domains required'); return false; }
+
+    const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
+    var matches = serverlessYml.toString().match(/domainName: (.*?)\n/);
+    if (matches && matches[1]) {
+        var domain = matches[1];
+    } else {
+        console.log('Pressless: Unable to determine primary domain for project.');
+        return;
+    }
+
+    console.log('Pressless: Generating TLS certificates for ' + domain + ' with domain names ' + options.domains + '...');
+    var cmd = 'curl -fsL https://dl.eff.org/certbot-auto > ' + os.tmpdir() + '/certbot-auto && chmod a+x ' + os.tmpdir() + '/certbot-auto';
+    shell.exec(cmd, {silent: true});
+    var cmd = os.tmpdir() + '/certbot-auto certonly --no-eff-email --manual --preferred-challenges dns --agree-tos --manual-public-ip-logging-ok -m ' + options.email + ' --cert-name ' + domain + ' -d ' + options.domains + ' && rm ' + os.tmpdir() + '/certbot-auto && aws acm import-certificate --certificate file:///etc/letsencrypt/live/' + domain + '/cert.pem --certificate-chain file:///etc/letsencrypt/live/' + domain + '/chain.pem --private-key file:///etc/letsencrypt/live/' + domain + '/privkey.pem --region us-east-1';
+    console.log('');
+    console.log('Pressless: Execute the following (node & certbot can\'t detect input properly):');
+    console.log('');
+    console.log(cmd);
+    return;
+
+    /*
+    var child = shell.exec('bash --init-file <(echo ' + cmd + ')', {async: true});
+    child.stdout.on('finish', function(data) {
+        console.log('certificates:');
+        fs.unlinkSync(os.tmpdir() + '/certbot-auto');
+        var certs = shell.exec('sudo cat /etc/letsencrypt/live/' + domain + '/fullchain.pem /etc/letsencrypt/live/' + domain + '/privkey.pem').output;
+        console.log(certs);
+    });
+    */    
+}); 
+
+program
+  .command('domain')
+  .description('Setup domain')
+  .action(function(options) {
+    if (!fs.existsSync('.pressless/serverless.yml')) {
+        return console.log('Pressless: You must first call "pressless setup".');
+    }
+   
+    shell.cd('.pressless');
+    shell.exec('node_modules/.bin/serverless create_domain'); 
+}); 
+
+program
+  .command('copydb <dsn>')
+  .description('Copy database')
+  .action(function(dsn, options) {
+    if (!fs.existsSync('.pressless/serverless.yml')) {
+        return console.log('Pressless: You must first call "pressless setup".');
+    }
+
+    var dsn = new DSNParser(dsn);
+
+    const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
+    var matches = serverlessYml.toString().match(/domainName: (.*?)\n/);
+    if (matches && matches[1]) {
+        var domain = matches[1];
+    } else {
+        console.log('Pressless: Unable to determine primary domain for project.');
+        return;
+    }
+
+    var fromDatabase = {};
+    const wpConfig = fs.readFileSync('wp-config.php');
+    var matches = wpConfig.toString().match(/define\('DB_NAME', '(.*?)'/);
+    if (matches && matches[1]) { fromDatabase.database = matches[1]; }
+    var matches = wpConfig.toString().match(/define\('DB_USER', '(.*?)'/);
+    if (matches && matches[1]) { fromDatabase.user = matches[1]; }
+    var matches = wpConfig.toString().match(/define\('DB_PASSWORD', '(.*?)'/);
+    if (matches && matches[1]) { fromDatabase.password = matches[1]; }
+    var matches = wpConfig.toString().match(/define\('DB_HOST', '(.*?)'/);
+    if (matches && matches[1]) { fromDatabase.host = matches[1]; }
+    
+    // create database dump sql file
+    var tool = new MysqlTools();
+    var dumpSqlFileName = os.tmpdir() + '/' + domain + new Date().getTime() + '.sql';
+    tool.dumpDatabase({
+        host: fromDatabase.host
+        , user: fromDatabase.user
+        , password: fromDatabase.password
+        , dumpPath: dumpSqlFileName
+        , database: fromDatabase.database
+    }, function (error, output, message, dumpFileName) {
+        if (error instanceof Error) {
+            console.log(error);
+        } else {
+            // restore dump sql file to database
+            var tool = new MysqlTools();
+            tool.restoreDatabase({
+                host: dsn.get('host')
+                , user: dsn.get('user')
+                , password: dsn.get('password')
+                , sqlFilePath: dumpSqlFileName
+                , database: dsn.get('database')
+            }, function (error, output, message) {
+                if (error instanceof Error) {
+                    console.log(error);
+                } else {
+                    console.log(output);
+                    console.log(message);
+
+                    // fix wp-config entries
+                }
+            });
+        }
+    });
+}); 
+
+program
+  .command('deploy')
+  .description('Deploy Wordpress via Serverless')
+  .option("-e, --env <env>", "Environment to use")
+  .option("-r, --region <region>", "Region to use")
+  .option("-v, --verbose", "Show events as they occur")
+  .action(function(options) {
+    if (!fs.existsSync('.pressless/serverless.yml')) {
+        return console.log('Pressless: You must first call "pressless setup".');
+    }
+ 
+    try { fs.unlinkSync(os.tmpdir() + '/wordpress_latest.tar.gz'); } catch (e) {}
+    console.log('Pressless: Downloading latest Wordpress release to ' + os.tmpdir() + '...');
+    tarball.extractTarballDownload('https://wordpress.org/latest.tar.gz', os.tmpdir() + '/wordpress_latest.tar.gz', '.pressless', {}, function(err, result) {
+        if (err) {
+            console.log(err, result); 
+            return;
+        }
+
+        // remove archive
+        fs.unlinkSync(os.tmpdir() + '/wordpress_latest.tar.gz');
+
+        // copy files into .pressless
+        fse.copySync(path.resolve(path.dirname(__dirname),'./src/handler.js'), '.pressless/handler.js');
+        fse.copySync(path.resolve(path.dirname(__dirname),'./src/handler.php'), '.pressless/handler.php');
+        fse.copySync(path.resolve(path.dirname(__dirname),'./bin/php'), '.pressless/php');
+                                                                               
+        console.log('Pressless: Importing existing Wordpress site...');
+
+        // support for Evolution
+        const wpConfig = fs.readFileSync('wp-config.php');
+        if (wpConfig.toString().indexOf('Evolution.php') > 0 && fs.existsSync('../Evolution.php')) {
+            console.log('Pressless: Detected Evolution, including...');
+            fse.copySync('../Evolution.php', '.pressless/Evolution.php');    
+            if (fs.existsSync('../lib/ansible/group_vars/all')) {
+                fse.mkdirsSync('.pressless/lib/ansible/group_vars');
+                fse.copySync('../lib/ansible/group_vars/all', '.pressless/lib/ansible/group_vars/all');    
+            }
+
+            // rename wordpress directory down into wp
+            fse.moveSync('.pressless/wordpress', '.pressless/wp')
+            fse.mkdirsSync('.pressless/wordpress');
+            fse.moveSync('.pressless/wp', '.pressless/wordpress/wp')
+
+            // copy all files, since we may need more for an Evolution site
+            fse.copySync('./', '.pressless/wordpress/', {filter: (src, dest) => {
+                // don't cyclical copy, etc
+                return (src.indexOf('.pressless') >= 0 || src.indexOf('.htaccess') >= 0) ? false : true;
+            }});        
+        } else {
+            fse.copySync('index.php', '.pressless/wordpress/index.php');
+            fse.copySync('wp-config.php', '.pressless/wordpress/wp-config.php');
+            fse.copySync('wp-content', '.pressless/wordpress/wp-content');
+
+            fse.copySync('./', '.pressless/wordpress/', {filter: (src, dest) => {
+                // don't cyclical copy, etc
+                return (src.indexOf('.pressless') >= 0 || src.indexOf('.htaccess') >= 0 || src.indexOf('wp-') === 0 || src.indexOf('.php') > 0) ? false : true;
+            }});  
+        }
+
+        console.log('Pressless: Installing WP Static HTML Output...');
+        const pwd = shell.pwd().toString();
+        fs.mkdirSync(path.join(pwd, '.pressless/wordpress/wp-content/plugins/static-html-output-plugin'));
+        var zipFilePath = path.join(pwd, '.pressless/wordpress/wp-content/plugins', 'static-html-output-plugin.1.9.zip');
+        request('https://downloads.wordpress.org/plugin/static-html-output-plugin.1.9.zip')
+            .on('error', function (err) {
+                console.log('Pressless: requestZip: ', err);
+            })
+            .pipe(fs.createWriteStream(zipFilePath))
+            .on('error', function (err) {
+                console.log('Pressless: createZip: ', err);
+            })
+            .on('finish', function () {
+                var readStream = fs.createReadStream(zipFilePath),
+                    writeStream = fstream.Writer(path.join(pwd, '.pressless/wordpress/wp-content/plugins'));
+
+                readStream
+                    .pipe(unzip.Parse())
+                    .on('error', function (err) {
+                        console.log('Pressless: parseZip: ', err);
+                    })
+                    .pipe(writeStream)
+                    .on('error', function (err) {
+                        console.log('Pressless: unZip: ', err);
+                    })
+                    .on('finish', function () {
+                        fs.unlinkSync(zipFilePath);
+                    });
+            });
+
+        shell.cd('.pressless');
+        var child = shell.exec('node_modules/.bin/serverless deploy' 
+            + (options.env?' --stage '+options.env:'') 
+            + (options.region?' --region '+options.region:'') 
+            + (options.verbose?' --verbose:':''), {async:true});
+        child.stdout.on('finish', function(data) {
+            try { fse.removeSync('lib'); } catch (e) {}
+            try { fse.removeSync('wordpress'); } catch (e) {}
+            try { fs.unlinkSync('Evolution.php'); } catch (e) {}
+        });
+    });
+}); 
+
+program
+  .command('test <stage> <request_path>')
+  .description('Test the Serverless function')
+  .action(function(stage, requestPath, options) {
+    if (!fs.existsSync('.pressless/serverless.yml')) {
+        return console.log('Pressless: You must first call "pressless setup".');
+    }
+ 
+    var functionName = '';
+    const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
+    var matches = serverlessYml.toString().match(/domainName: (.*?)\n/);
+    if (matches && matches[1]) {
+        var domain = matches[1];
+        functionName = domain.replace(/[\.\_\']/g, '-');
+    } else {
+        console.log('Pressless: Unable to determine primary domain for project.');
+        return;
+    }
+ 
+    var eventData = '{"path":"' + requestPath + '","httpMethod":"GET","headers":{"Host":"' + domain + '"},"queryStringParameters":null}';
+    var localMode = stage == 'local' ? stage : '';
+
+    shell.cd('.pressless');
+    shell.exec('node_modules/.bin/serverless invoke ' + localMode + ' -f ' + functionName + ' -d ' + eventData);
+}); 
+
+asciify('pressless', {font: 'larry3d', maxWidth: 75}, function (err, result) {
+    result = result.toString().replace('                                                                 ', "                ---helping wordpress cost less---");
+    console.log(result);
+    if (process.argv.length == 2) program.outputHelp(); 
+    program.parse(process.argv);
+});
