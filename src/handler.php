@@ -6,6 +6,7 @@ $stderr = fopen('php://stderr', 'w');
 // override header function so we can catch/process headers, instead of wordpress outputting them directly (and then possibly exiting)
 $_RESPONSE = array('statusCode' => 200, 'body' => '', 'headers' => array());
 override_function('header', '$string', 'global $_RESPONSE;$parts = explode(": ", $string); if (is_array($parts) && count($parts) >= 2) { $_RESPONSE["headers"][$parts[0]] = $parts[1]; } else if (strpos($string, "HTTP/1.0 ") == 0) { $code = explode(" ", $string); if (is_array($code) && count($code) >= 2) { $_RESPONSE["statusCode"] = intval($code[1]); } } return null;');
+//override_function('mysql_real_escape_string', '$string', 'return mysqli_real_escape_string($string);');
 
 // Get event data and context object
 $event = json_decode($argv[1], true) ?: [];
@@ -14,6 +15,7 @@ $apiMode = $event['pressless_api_only'] ?: false;
 $evolutionMode = $event['pressless_evolution'] ?: false;
 
 $_SERVER['SERVER_PROTOCOL'] = 'HTTPS';
+$_SERVER["DOCUMENT_ROOT"] = '/var/task/wordpress'; // lambda specific!
 $_SERVER['HTTP_HOST'] = $event['headers']['Host'] ?: 'localhost';
 $_SERVER['SERVER_NAME'] = $event['headers']['Host'] ?: 'localhost';
 $_SERVER['REQUEST_METHOD'] = $event['httpMethod'] ?: 'GET';
@@ -88,7 +90,7 @@ try {
     // serve static files
     fwrite($stderr, 'path is ' . $event['path']);
     $path_parts = pathinfo($event['path']);   
-    if ($event['path'] != '/' && (strpos($event['path'], '/wp-content/') === 0 || in_array($path_parts['extension'], array('html','htm','css','txt','csv','scss','json','xml','ico','js','gif','jpg','jpeg','png','pdf','otf','ttf','woff','eot','svg')))) {
+    if ($event['path'] != '/' && ((strpos($event['path'], '/wp-content/') === 0 && $path_parts['extension'] != 'php') || in_array($path_parts['extension'], array('html','htm','css','txt','csv','scss','json','xml','ico','js','gif','jpg','jpeg','png','pdf','otf','ttf','woff','eot','svg')))) {
         $file = 'wordpress' . $event['path'];
         if (is_readable($file)) {
             fwrite($stderr, 'serving static file ' . $file); 
@@ -103,6 +105,7 @@ try {
                 $isBase64 = true;
             }
 
+            if ($path_parts['extension'] == 'svg') $fileType = 'image/svg+xml';
             if ($path_parts['extension'] == 'css') $fileType = 'text/css';
             if ($path_parts['extension'] == 'js') $fileType = 'text/javascript';
             if ($path_parts['extension'] == 'json') $fileType = 'application/json';
