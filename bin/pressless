@@ -77,6 +77,8 @@ package:
     - wordpress/**
     - Evolution.php
     - lib/**
+    - vendor/**
+    - web/**
 
 plugins:
   - serverless-domain-manager
@@ -242,14 +244,21 @@ program
                                                                                
         console.log('Pressless: Importing existing Wordpress site...');
 
-        // support for Evolution
-        const wpConfig = fs.readFileSync('wp-config.php');
-        if (wpConfig.toString().indexOf('Evolution.php') > 0 && fs.existsSync('../Evolution.php')) {
+        // support for Evolution (https://github.com/evolution/wordpress)
+        var wpConfig = fs.readFileSync('wp-config.php').toString();
+        var isEvolution = false;
+        if (wpConfig.indexOf('Evolution.php') > 0 && fs.existsSync('../Evolution.php')) {
             console.log('Pressless: Detected Evolution, including...');
+            isEvolution = true;
+
             fse.copySync('../Evolution.php', '.pressless/Evolution.php');    
             if (fs.existsSync('../lib/ansible/group_vars/all')) {
                 fse.mkdirsSync('.pressless/lib/ansible/group_vars');
                 fse.copySync('../lib/ansible/group_vars/all', '.pressless/lib/ansible/group_vars/all');    
+            }
+
+            if (fs.existsSync('../vendor')) {
+                fse.copySync('../vendor/', '.pressless/vendor');
             }
 
             // rename wordpress directory down into wp
@@ -261,7 +270,7 @@ program
             fse.copySync('./', '.pressless/wordpress/', {filter: (src, dest) => {
                 // don't cyclical copy, etc
                 return (src.indexOf('.pressless') >= 0 || src.indexOf('.htaccess') >= 0) ? false : true;
-            }});        
+            }});
         } else {
             fse.copySync('index.php', '.pressless/wordpress/index.php');
             fse.copySync('wp-config.php', '.pressless/wordpress/wp-config.php');
@@ -303,6 +312,8 @@ program
                     });
             });
 
+        if (isEvolution) fse.moveSync('.pressless/wordpress', '.pressless/web');
+        
         shell.cd('.pressless');
         var child = shell.exec('node_modules/.bin/serverless deploy' 
             + (options.env?' --stage '+options.env:'') 
@@ -310,6 +321,8 @@ program
             + (options.verbose?' --verbose:':''), {async:true});
         child.stdout.on('finish', function(data) {
             try { fse.removeSync('lib'); } catch (e) {}
+            try { fse.removeSync('vendor'); } catch (e) {}
+            try { fse.removeSync('web'); } catch (e) {}
             try { fse.removeSync('wordpress'); } catch (e) {}
             try { fs.unlinkSync('Evolution.php'); } catch (e) {}
         });
