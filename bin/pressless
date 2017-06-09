@@ -25,6 +25,17 @@ const shell = require('shelljs');
 const tarball = require('tarball-extract');
 const unzip = require('unzip');
 
+function getDomain() {
+    const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
+    var matches = serverlessYml.toString().match(/domainName: (.*?)\n/);
+    if (matches && matches[1]) {
+        return matches[1];
+    } else {
+        console.log('Pressless: Unable to determine primary domain for project.');
+        process.exit(1);
+    }
+}
+
 program
   .command('setup <domain>')
   .description('Setup pressless')
@@ -106,14 +117,7 @@ program
     if (!options.email) { console.log('--email required'); return false; }
     if (!options.domains) { console.log('--domains required'); return false; }
 
-    const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
-    var matches = serverlessYml.toString().match(/domainName: (.*?)\n/);
-    if (matches && matches[1]) {
-        var domain = matches[1];
-    } else {
-        console.log('Pressless: Unable to determine primary domain for project.');
-        return;
-    }
+    const domain = getDomain();
 
     console.log('Pressless: Generating TLS certificates for ' + domain + ' with domain names ' + options.domains + '...');
     var cmd = 'curl -fsL https://dl.eff.org/certbot-auto > ' + os.tmpdir() + '/certbot-auto && chmod a+x ' + os.tmpdir() + '/certbot-auto';
@@ -158,14 +162,7 @@ program
 
     var dsn = new DSNParser(dsn);
 
-    const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
-    var matches = serverlessYml.toString().match(/domainName: (.*?)\n/);
-    if (matches && matches[1]) {
-        var domain = matches[1];
-    } else {
-        console.log('Pressless: Unable to determine primary domain for project.');
-        return;
-    }
+    const domain = getDomain();
 
     var fromDatabase = {};
     const wpConfig = fs.readFileSync('wp-config.php');
@@ -323,20 +320,11 @@ program
     if (!fs.existsSync('.pressless/serverless.yml')) {
         return console.log('Pressless: You must first call "pressless setup".');
     }
- 
-    var functionName = '';
-    const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
-    var matches = serverlessYml.toString().match(/domainName: (.*?)\n/);
-    if (matches && matches[1]) {
-        var domain = matches[1];
-        functionName = domain.replace(/[\.\_\']/g, '-');
-    } else {
-        console.log('Pressless: Unable to determine primary domain for project.');
-        return;
-    }
- 
-    var eventData = '{"path":"' + requestPath + '","httpMethod":"GET","headers":{"Host":"' + domain + '"},"queryStringParameters":null}';
-    var localMode = stage == 'local' ? stage : '';
+
+    const domain = getDomain();
+    const functionName = domain.replace(/[\.\_\']/g, '-');
+    const eventData = '{"path":"' + requestPath + '","httpMethod":"GET","headers":{"Host":"' + domain + '"},"queryStringParameters":null}';
+    const localMode = stage == 'local' ? stage : '';
 
     shell.cd('.pressless');
     shell.exec('node_modules/.bin/serverless invoke ' + localMode + ' -f ' + functionName + ' -d ' + eventData);
