@@ -50,7 +50,7 @@ program
     }
  
     domain = domain.toLowerCase();
-    const name = domain.replace(/[\.\_\']/g, '-');
+    const name = domain.replace(/[\.\_\']/g, '-').substring(0, domain.length - (options.env||'dev').length - (options.region||'us-east-1').length - '---lambdaRole'.length);  // created iam role must be <= 64 chars
     const certificate = options.certificate ? `certificateName: '${options.certificate}'` : '';
 
     const packageJson = `{
@@ -313,7 +313,7 @@ program
             });
 
         if (isEvolution) fse.moveSync('.pressless/wordpress', '.pressless/web');
-        
+
         shell.cd('.pressless');
         var child = shell.exec('node_modules/.bin/serverless deploy' 
             + (options.env?' --stage '+options.env:'') 
