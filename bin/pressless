@@ -285,6 +285,13 @@ program
             }});  
         }
 
+        console.log('Pressless: Modifying wordpress config...');
+        // modify copied wp-config.php
+        // set upload directory to /tmp, since lambda doesn't provide a writable filesystem
+        var tmpDir = isEvolution ? '../../../../tmp/' + domain + '-uploads' : '../../../tmp/' + domain + '-uploads';
+        wpConfig = wpConfig.replace('<?php', "<?php\ndefine('UPLOADS', '" + tmpDir + "');\n");
+        fs.writeFileSync('.pressless/wordpress/wp-config.php', wpConfig);
+
         const pwd = shell.pwd().toString();
         async.parallel([
             function(callback) {
