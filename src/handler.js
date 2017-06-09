@@ -43,28 +43,25 @@ module.exports.handle = (event, context, callback) => {
   // PHP script execution end
   proc.on('close', function(code) {
     if (code !== 0) {
-      return callback(new Error(`Process error code ${code}: ${response}`));
+      try {
+        var result = JSON.parse(response);
+        return callback(null, {
+            statusCode: 500,
+            body: result['body'] || response,
+            headers: {'Content-Type': 'text/html'}
+        });
+      } catch (e) {
+        callback(null, {
+            statusCode: 500,
+            body: response,
+            headers: {'Content-Type': 'text/html', 'X-Error': JSON.stringify(e)}
+        });
+      }
     }
 
     try {
       console.log('handler.js: response:', response)
 
-      var properPosition = response.indexOf('{"statusCode":');
-      var properLastPosition = response.lastIndexOf('{"statusCode":');
-      
-      if (properPosition > 5) {
-        // something went wrong, we have a proper response but with data before it,
-        // so lets strip all but the last proper response
-        console.log('handler.js: extra data in response, left trimming ' + properPosition + ' chars...');
-      }
-
-      if (properPosition == properLastPosition) {
-        response = response.substring(properPosition);
-      } else {
-        console.log('handler.js: two valid response objects, using the first...');
-        response = response.substring(properPosition, properLastPosition);
-      }
-      
       var result = response == '' ? '{}' : JSON.parse(response);
 
       // needed to tell ApiGateway to decode base64 encoded binary data
@@ -73,11 +70,9 @@ module.exports.handle = (event, context, callback) => {
       }
 
       if (result && result['body']) {
-        // convert http urls for same host to https, since ApiGateway requires http for custom domains
+        // convert http urls to https, since ApiGateway requires http for custom domains
         // and we don't want browser complaining about unsafe scripts
-        var re = 'http:.*?' + event['headers']['Host'];
-        result['body'] = result['body'].replace(new RegExp(re, 'g'), 'https://' + event['headers']['Host']);
-        var re = 'http:';
+        var re = 'http://';
         result['body'] = result['body'].replace(new RegExp(re, 'g'), 'https://');
       }
       
