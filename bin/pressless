@@ -11,6 +11,7 @@
 'use strict';
 
 const asciify = require('asciify');
+const async = require('async');
 const DSNParser = require('dsn-parser');
 const exec = require('child_process').exec;
 const fs = require('fs');
@@ -225,6 +226,8 @@ program
     if (!fs.existsSync('.pressless/serverless.yml')) {
         return console.log('Pressless: You must first call "pressless setup".');
     }
+
+    const domain = getDomain();
  
     try { fs.unlinkSync(os.tmpdir() + '/wordpress_latest.tar.gz'); } catch (e) {}
     console.log('Pressless: Downloading latest Wordpress release to ' + os.tmpdir() + '...');
@@ -282,49 +285,168 @@ program
             }});  
         }
 
-        console.log('Pressless: Installing WP Static HTML Output...');
         const pwd = shell.pwd().toString();
-        fs.mkdirSync(path.join(pwd, '.pressless/wordpress/wp-content/plugins/static-html-output-plugin'));
-        var zipFilePath = path.join(pwd, '.pressless/wordpress/wp-content/plugins', 'static-html-output-plugin.1.9.zip');
-        request('https://downloads.wordpress.org/plugin/static-html-output-plugin.1.9.zip')
-            .on('error', function (err) {
-                console.log('Pressless: requestZip: ', err);
-            })
-            .pipe(fs.createWriteStream(zipFilePath))
-            .on('error', function (err) {
-                console.log('Pressless: createZip: ', err);
-            })
-            .on('finish', function () {
-                var readStream = fs.createReadStream(zipFilePath),
-                    writeStream = fstream.Writer(path.join(pwd, '.pressless/wordpress/wp-content/plugins'));
-
-                readStream
-                    .pipe(unzip.Parse())
+        async.parallel([
+            function(callback) {
+                console.log('Pressless: Installing Jetpack plugin...');
+                //fs.mkdirSync(path.join(pwd, '.pressless/wordpress/wp-content/plugins/jetpack'));
+                var zipFilePath = path.join(pwd, '.pressless/wordpress/wp-content/plugins', 'jetpack.5.0.zip');
+                request('https://downloads.wordpress.org/plugin/jetpack.5.0.zip')
                     .on('error', function (err) {
-                        console.log('Pressless: parseZip: ', err);
+                        console.log('Pressless: requestZip: ', err);
                     })
-                    .pipe(writeStream)
+                    .pipe(fs.createWriteStream(zipFilePath))
                     .on('error', function (err) {
-                        console.log('Pressless: unZip: ', err);
+                        console.log('Pressless: createZip: ', err);
                     })
                     .on('finish', function () {
-                        fs.unlinkSync(zipFilePath);
+                        var readStream = fs.createReadStream(zipFilePath),
+                            writeStream = fstream.Writer(path.join(pwd, '.pressless/wordpress/wp-content/plugins'));
+
+                        readStream
+                            .pipe(unzip.Parse())
+                            .on('error', function (err) {
+                                console.log('Pressless: parseZip: ', err);
+                            })
+                            .pipe(writeStream)
+                            .on('error', function (err) {
+                                console.log('Pressless: unZip: ', err);
+                            })
+                            .on('close', function () {
+                                fs.unlinkSync(zipFilePath);
+                                callback(null);
+                            });
                     });
+            },
+            function(callback) {
+                console.log('Pressless: Installing WP Static HTML Output plugin...');
+                //fs.mkdirSync(path.join(pwd, '.pressless/wordpress/wp-content/plugins/static-html-output-plugin'));
+                var zipFilePath = path.join(pwd, '.pressless/wordpress/wp-content/plugins', 'static-html-output-plugin.1.9.zip');
+                request('https://github.com/leonstafford/wordpress-static-html-plugin/archive/master.zip')
+                    .on('error', function (err) {
+                        console.log('Pressless: requestZip: ', err);
+                    })
+                    .pipe(fs.createWriteStream(zipFilePath))
+                    .on('error', function (err) {
+                        console.log('Pressless: createZip: ', err);
+                    })
+                    .on('finish', function () {
+                        var readStream = fs.createReadStream(zipFilePath),
+                            writeStream = fstream.Writer(path.join(pwd, '.pressless/wordpress/wp-content/plugins'));
+
+                        readStream
+                            .pipe(unzip.Parse())
+                            .on('error', function (err) {
+                                console.log('Pressless: parseZip: ', err);
+                            })
+                            .pipe(writeStream)
+                            .on('error', function (err) {
+                                console.log('Pressless: unZip: ', err);
+                            })
+                            .on('close', function () {
+                                fs.unlinkSync(zipFilePath);
+
+                                // copy replacement StaticHtmlOutput.php
+                                console.log('Pressless: Customizing WP Static HTML Output plugin...');
+                                fse.copySync(path.resolve(path.dirname(__dirname),'./lib/StaticHtmlOutput.php'), '.pressless/wordpress/wp-content/plugins/wordpress-static-html-plugin-master/library/StaticHtmlOutput.php');
+                                callback(null);
+                            });
+                    });
+            },
+            function(callback) {
+                console.log('Pressless: Installing Amazon Web Services plugin...');
+                //fs.mkdirSync(path.join(pwd, '.pressless/wordpress/wp-content/plugins/static-html-output-plugin'));
+                var zipFilePath = path.join(pwd, '.pressless/wordpress/wp-content/plugins', 'amazon-web-services.1.0.2.zip');
+                request('https://downloads.wordpress.org/plugin/amazon-web-services.1.0.2.zip')
+                    .on('error', function (err) {
+                        console.log('Pressless: requestZip: ', err);
+                    })
+                    .pipe(fs.createWriteStream(zipFilePath))
+                    .on('error', function (err) {
+                        console.log('Pressless: createZip: ', err);
+                    })
+                    .on('finish', function () {
+                        var readStream = fs.createReadStream(zipFilePath),
+                            writeStream = fstream.Writer(path.join(pwd, '.pressless/wordpress/wp-content/plugins'));
+
+                        readStream
+                            .pipe(unzip.Parse())
+                            .on('error', function (err) {
+                                console.log('Pressless: parseZip: ', err);
+                            })
+                            .pipe(writeStream)
+                            .on('error', function (err) {
+                                console.log('Pressless: unZip: ', err);
+                            })
+                            .on('close', function () {
+                                fs.unlinkSync(zipFilePath);
+                                callback(null);
+                            });
+                    });
+            },
+            function(callback) {
+                console.log('Pressless: Installing WP Offload S3 Lite plugin...');
+                //fs.mkdirSync(path.join(pwd, '.pressless/wordpress/wp-content/plugins/static-html-output-plugin'));
+                var zipFilePath = path.join(pwd, '.pressless/wordpress/wp-content/plugins', 'amazon-s3-and-cloudfront.1.1.6.zip');
+                request('https://downloads.wordpress.org/plugin/amazon-s3-and-cloudfront.1.1.6.zip')
+                    .on('error', function (err) {
+                        console.log('Pressless: requestZip: ', err);
+                    })
+                    .pipe(fs.createWriteStream(zipFilePath))
+                    .on('error', function (err) {
+                        console.log('Pressless: createZip: ', err);
+                    })
+                    .on('finish', function () {
+                        var readStream = fs.createReadStream(zipFilePath),
+                            writeStream = fstream.Writer(path.join(pwd, '.pressless/wordpress/wp-content/plugins'));
+
+                        readStream
+                            .pipe(unzip.Parse())
+                            .on('error', function (err) {
+                                console.log('Pressless: parseZip: ', err);
+                            })
+                            .pipe(writeStream)
+                            .on('error', function (err) {
+                                console.log('Pressless: unZip: ', err);
+                            })
+                            .on('close', function () {
+                                fs.unlinkSync(zipFilePath);
+                                callback(null);
+                            });
+                    });
+            }
+        ],
+        // optional callback
+        function(err, results) {
+            if (err) {
+                console.log('Pressless: erroring installing plugins: ' + err);
+                // cleanup copied files
+                try { fse.removeSync('lib'); } catch (e) {}
+                try { fse.removeSync('vendor'); } catch (e) {}
+                try { fse.removeSync('web'); } catch (e) {}
+                try { fse.removeSync('wordpress'); } catch (e) {}
+                try { fs.unlinkSync('Evolution.php'); } catch (e) {}
+                return;
+            }
+
+            if (isEvolution) fse.moveSync('.pressless/wordpress', '.pressless/web');
+
+            shell.cd('.pressless');
+            var child = shell.exec('node_modules/.bin/serverless deploy'
+                + (options.env?' --stage '+options.env:'')
+                + (options.region?' --region '+options.region:'')
+                + (options.verbose?' --verbose:':''), {async:true});
+            child.stdout.on('finish', function(data) {
+                console.log("\nPressless: You can now visit your new Pressless site at:");
+                console.log("https://" + domain);
+
+                // cleanup copied files
+                try { fse.removeSync('lib'); } catch (e) {}
+                try { fse.removeSync('vendor'); } catch (e) {}
+                try { fse.removeSync('web'); } catch (e) {}
+                try { fse.removeSync('wordpress'); } catch (e) {}
+                try { fs.unlinkSync('Evolution.php'); } catch (e) {}
             });
-
-        if (isEvolution) fse.moveSync('.pressless/wordpress', '.pressless/web');
-
-        shell.cd('.pressless');
-        var child = shell.exec('node_modules/.bin/serverless deploy' 
-            + (options.env?' --stage '+options.env:'') 
-            + (options.region?' --region '+options.region:'') 
-            + (options.verbose?' --verbose:':''), {async:true});
-        child.stdout.on('finish', function(data) {
-            try { fse.removeSync('lib'); } catch (e) {}
-            try { fse.removeSync('vendor'); } catch (e) {}
-            try { fse.removeSync('web'); } catch (e) {}
-            try { fse.removeSync('wordpress'); } catch (e) {}
-            try { fs.unlinkSync('Evolution.php'); } catch (e) {}
         });
     });
 }); 
@@ -336,7 +458,7 @@ program
     if (!fs.existsSync('.pressless/serverless.yml')) {
         return console.log('Pressless: You must first call "pressless setup".');
     }
-
+ 
     const domain = getDomain();
     const functionName = domain.replace(/[\.\_\']/g, '-');
     const eventData = '{"path":"' + requestPath + '","httpMethod":"GET","headers":{"Host":"' + domain + '"},"queryStringParameters":null}';
