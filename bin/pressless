@@ -103,7 +103,7 @@ functions:
 
     shell.cd('.pressless');
     var npmInstall = shell.exec('npm install', {silent: true}).stdout;
-    fse.copySync(path.resolve(path.dirname(__dirname),'./serverless-domain-manager.js'), 'node_modules/serverless-domain-manager/index.js');
+    fse.copySync(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager.js'), 'node_modules/serverless-domain-manager/index.js');
     console.log('Pressless: Setup complete.');
 }); 
 
