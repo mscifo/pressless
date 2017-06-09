@@ -32,6 +32,7 @@ RUN ./configure \
     --enable-shared=no \
     --disable-all \
     --enable-apd \
+    --enable-dom \
     --enable-filter \
     --enable-hash \
     --enable-json \
@@ -39,6 +40,7 @@ RUN ./configure \
     --enable-mbstring \
     --enable-phar \
     --enable-pdo \
+    --enable-simplexml \
     --enable-soap \
     --enable-xml \
     --enable-zip \
