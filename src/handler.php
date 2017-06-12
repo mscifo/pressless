@@ -30,7 +30,7 @@ foreach ($event['queryStringParameters'] as $k => $v) {
         $properKey = str_replace('[]', '', $k);
         $_GET[$properKey] = isset($_GET[$properKey]) ? $_GET[$properKey] . $v : $v;
     } else {
-        $_GET[$k] = $v;
+        $_GET[$k] = is_numeric($v) ? (int)$v : $v;
     }
 }
 debug('GET: ' . print_r($_GET, true));
@@ -39,7 +39,8 @@ $_SERVER['REQUEST_URI'] .= empty($_GET) ? '' : '?'.http_build_query($_GET);
 
 if (!isset($event['body'])) $event['body'] = '';
 parse_str($event['body'], $_POST);
-debug('POST: ' . print_r($_POST, true));
+$_POST = array_map(function ($v) { return is_numeric($v) ? (int)$v : $v; }, $_POST);
+debug('POST: ' . var_export($_POST, true));
  
 // in case wordpress crashes/exits, we don't want to lose any output, which 
 // we'll use in the shutdown function
