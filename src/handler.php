@@ -3,10 +3,18 @@ error_reporting( E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_ERROR | E_P
 function debug($v) { fwrite(fopen('php://stderr', 'w'), $v."\n"); }
 //$fd = fopen('php://fd/3', 'r+');  // for getremainingtime
 
-// override header function so we can catch/process headers, instead of wordpress outputting them directly (and then possibly exiting)
+// initialize base response array
 $_RESPONSE = array('statusCode' => 200, 'body' => '', 'headers' => array());
+$_COOKIECOUNT = 0;
+
 override_function('header', '$string', 'global $_RESPONSE;$parts = explode(": ", $string); if (is_array($parts) && count($parts) >= 2) { $_RESPONSE["headers"][$parts[0]] = $parts[1]; } else if (strpos($string, "HTTP/1.0 ") == 0) { $code = explode(" ", $string); if (is_array($code) && count($code) >= 2) { $_RESPONSE["statusCode"] = intval($code[1]); } } return null;');
-//override_function('mysql_real_escape_string', '$string', 'return mysqli_real_escape_string($string);');
+rename_function("__overridden__", '__overridden__header');
+// override setcookie function so we can capture the resulting header and modify the Set-Cookie header name to allow for multiple cookies to be set, which we process using binary case iteration in handler.js
+override_function('setcookie', '$name,$value,$expire,$path,$domain', 'global $_RESPONSE;global $_COOKIECOUNT;$_RESPONSE["headers"]["X-Set-Cookie-".++$_COOKIECOUNT] = rawurlencode($name) . "=" . rawurlencode($value) . (empty($expire) ? "" : "; expires=" . gmdate("D, d-M-Y H:i:s", $expire) . " GMT") . (empty($path) ? "" : "; path=" . $path) . (empty($domain) ? "" : "; domain=" . $domain) . "; secure" . "; HttpOnly"; return null;');
+rename_function("__overridden__", '__overridden__setcookie');
+// possibly needed by some older plugins
+override_function('mysql_real_escape_string', '$string', 'return mysqli_real_escape_string($string);');
+rename_function("__overridden__", '__overridden__mysql_real_escape_string');
 
 // Get event data and context object
 $event = json_decode($argv[1], true) ?: [];

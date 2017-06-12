@@ -1,5 +1,6 @@
 'use strict';
 
+var binary_case = require('binary-case');
 var child_process = require('child_process');
 
 module.exports.handle = (event, context, callback) => {
@@ -75,7 +76,22 @@ module.exports.handle = (event, context, callback) => {
         var re = 'http://';
         result['body'] = result['body'].replace(new RegExp(re, 'g'), 'https://');
       }
-      
+
+      // since ApiGateway can only receive one instance of each header and there may be multiple cookies
+      // that need to be set, we use the fact that header names are case-insensitive to set a max of 512 
+      // cookies using different case variations and loop through all X-Set-Cookie-# headers to assign
+      // them to one of the Set-Cookie case variations.
+      // @see https://forums.aws.amazon.com/thread.jspa?threadID=205782
+      if (result && result['headers']) {
+        var cookieIterator = binary_case.iterator('set-cookie');
+        Object.keys(result['headers']).forEach(function(key) {
+          if (key.indexOf('X-Set-Cookie-') == 0) {
+            result['headers'][cookieIterator.next().value] = result['headers'][key];
+            delete result['headers'][key];
+          }
+        });
+      }
+
       //console.log('event:', event);
       //console.log(result);
       callback(null, result);
