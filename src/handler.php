@@ -43,51 +43,35 @@ parse_str($event['body'], $_POST);
 $_POST = array_map(function ($v) { return is_numeric($v) ? (int)$v : $v; }, $_POST);
 debug('POST: ' . var_export($_POST, true));
  
-// in case wordpress crashes/exits, we don't want to lose any output, which 
-// we'll use in the shutdown function
+// capture all output
 function buffer($buffer) {
     global $_RESPONSE;
 
-    // how do we tell if this function was called by shutdown or by ob_end_flush()??
-    //$_RESPONSE['body'] .= $buffer;
-    $_RESPONSE['body'] = $buffer;
-
-    debug('buffer response: ' . json_encode($_RESPONSE));
-
-    return '';
+    // we need to fix references to load-scripts.php and load-styles.php, since they split the 
+    // comma separated styles/scripts into multiple 'load[]' query parameters and only the last 
+    // instance is passed in the event by ApiGateway
+    $newBuffer = preg_replace('/(?<!(?:c=0|ltr))&amp;load%5B%5D=/', '', $buffer);
+    if (!empty($newBuffer)) $buffer = $newBuffer;
+    
+    if (strpos($buffer, '{\"statusCode\":') === 0) {
+        // already proper json encoded object
+        return $buffer;
+    } else {
+        return json_encode([
+            'statusCode' => intval($_RESPONSE['statusCode']) ?: 200,
+            'body' => $buffer,
+            'headers' => $_RESPONSE['headers'] ?: array()
+        ]);
+    }
 }
 
-// in case wordpress crashes, we want to know why and properly redirect
+// in case wordpress crashes, we want to know why
 function shutdown() {
-    global $_RESPONSE;
-
-    // flush buffer, so buffer() can add buffer to $_RESPONSE
-    // in case ob_end_flush() wasn't called before exiting
-    ob_end_flush();
-
-    debug('shutdown response: ' . json_encode($_RESPONSE));
-    if (($error = error_get_last())) {
-        // since this function will be called for every request, 
-        // we don't want to print errors and redirects for E_NOTICE/E_WARNING
-        if ($error['type'] == E_NOTICE || $error['type'] == E_WARNING) {
-            if (isset($_RESPONSE['statusCode'])) print json_encode($_RESPONSE);
-            return;
-        }
-
-        debug('php error: ' . json_encode($error));
+   if (($error = error_get_last())) {
+        // we don't want to print errors for E_NOTICE/E_WARNING
+        if ($error['type'] == E_NOTICE || $error['type'] == E_WARNING) return;
+        fwrite(fopen('php://stderr', 'w'), 'php error: ' . json_encode($error));
     }
-
-    // if we got a redirect header before the shutdown call, use it
-    if (isset($_RESPONSE['statusCode'])) return print(json_encode($_RESPONSE));
-
-    // otherwise, redirect to 404
-    print json_encode([
-        'statusCode' => 302,
-        'body' => '',
-        'headers' => array(
-            'Location' => '/404'
-        )
-    ]);
 }
 register_shutdown_function('shutdown');
 
@@ -170,22 +154,10 @@ try {
             require_once 'wordpress/wp-includes/template-loader.php';
         }
     }
-
-    $response = ob_get_contents();
-    ob_end_clean();
-
-    // send data back to shim
-    print json_encode([
-        'statusCode' => intval($_RESPONSE['statusCode']) ?: 200,
-        'body' => $response,
-        'headers' => $_RESPONSE['headers'] ?: array()
-    ]);
 } catch (Exception $e) {
-    print json_encode([
-        'statusCode' => 503,
-        'body' => $e->getMessage() . $e->getTraceAsString(),
-        'headers' => array('Content-Type' => 'text/html')
-    ]);
+    $_RESPONSE['statusCode'] = 503;
+    $_RESPONSE['headers'] = array('Content-Type' => 'text/html');
+    print $e->getMessage() . $e->getTraceAsString();
 } finally {
-    fclose($stderr); 
+    ob_end_flush(); 
 }
