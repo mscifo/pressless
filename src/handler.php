@@ -38,6 +38,7 @@ debug('GET: ' . print_r($_GET, true));
 $_SERVER['REQUEST_URI'] .= empty($_GET) ? '' : '?'.http_build_query($_GET);
 
 if (!isset($event['body'])) $event['body'] = '';
+$event['body'] = preg_match('%^[a-zA-Z0-9/+]*={0,2}$%', $event['body']) ? base64_decode($event['body']) : $event['body'];  // detect if post body is base64-encoded, and decode
 parse_str($event['body'], $_POST);
 $_POST = array_map(function ($v) { return is_numeric($v) ? (int)$v : $v; }, $_POST);
 debug('POST: ' . var_export($_POST, true));
