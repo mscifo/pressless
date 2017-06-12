@@ -1,6 +1,6 @@
 <?php
 error_reporting( E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_ERROR | E_PARSE | E_USER_ERROR | E_USER_WARNING | E_RECOVERABLE_ERROR );
-$stderr = fopen('php://stderr', 'w'); 
+function debug($v) { fwrite(fopen('php://stderr', 'w'), $v."\n"); }
 //$fd = fopen('php://fd/3', 'r+');  // for getremainingtime
 
 // override header function so we can catch/process headers, instead of wordpress outputting them directly (and then possibly exiting)
@@ -30,11 +30,11 @@ foreach ($event['queryStringParameters'] as $k => $v) {
         $_GET[$k] = $v;
     }
 }
-fwrite($stderr, 'GET: ' . print_r($_GET, true));
+debug('GET: ' . print_r($_GET, true));
 
 if (!isset($event['body'])) $event['body'] = '';
 parse_str($event['body'], $_POST);
-fwrite($stderr, 'POST: ' . print_r($_POST, true));
+debug('POST: ' . print_r($_POST, true));
 
 // in case wordpress crashes/exits, we don't want to lose any output, which 
 // we'll use in the shutdown function
@@ -45,7 +45,7 @@ function buffer($buffer) {
     //$_RESPONSE['body'] .= $buffer;
     $_RESPONSE['body'] = $buffer;
 
-    fwrite(fopen('php://stderr', 'w'), 'buffer response: ' . json_encode($_RESPONSE));
+    debug('buffer response: ' . json_encode($_RESPONSE));
 
     return '';
 }
@@ -58,7 +58,7 @@ function shutdown() {
     // in case ob_end_flush() wasn't called before exiting
     ob_end_flush();
 
-    fwrite(fopen('php://stderr', 'w'), 'shutdown response: ' . json_encode($_RESPONSE));
+    debug('shutdown response: ' . json_encode($_RESPONSE));
     if (($error = error_get_last())) {
         // since this function will be called for every request, 
         // we don't want to print errors and redirects for E_NOTICE/E_WARNING
@@ -67,7 +67,7 @@ function shutdown() {
             return;
         }
 
-        fwrite(fopen('php://stderr', 'w'), 'php error: ' . json_encode($error));
+        debug('php error: ' . json_encode($error));
     }
 
     // if we got a redirect header before the shutdown call, use it
@@ -84,23 +84,23 @@ function shutdown() {
 }
 register_shutdown_function('shutdown');
 
-fwrite($stderr, 'event: ' . $argv[1]);
+debug('event: ' . $argv[1]);
 
 try {
     // serve static files
-    fwrite($stderr, 'path is ' . $event['path']);
+    debug('path is ' . $event['path']);
     $path_parts = pathinfo($event['path']);   
     if ($event['path'] != '/' && ((strpos($event['path'], '/wp-content/') === 0 && $path_parts['extension'] != 'php') || in_array($path_parts['extension'], array('html','htm','css','txt','csv','scss','json','xml','ico','js','gif','jpg','jpeg','png','pdf','otf','ttf','woff','eot','svg')))) {
         $file = 'wordpress' . $event['path'];
         if (is_readable($file)) {
-            fwrite($stderr, 'serving static file ' . $file); 
+            debug('serving static file ' . $file); 
             $isBase64 = false;
             $fileType = mime_content_type($file);
             $fileContents = file_get_contents($file);
 
             // convert binary data to base64
             if (strpos($fileType, 'text/') === false && strpos($fileType, 'application/json') === false) {
-                fwrite($stderr, 'base64 enconding file ' . $file . ' of type ' . $fileType);
+                debug('base64 enconding file ' . $file . ' of type ' . $fileType);
                 $fileContents = base64_encode($fileContents);
                 $isBase64 = true;
             }
@@ -112,14 +112,14 @@ try {
             if ($path_parts['extension'] == 'xml') $fileType = 'application/xml';
             if ($path_parts['extension'] == 'html' || $path_parts['extension'] == 'htm') $fileType = 'text/html';
 
-            fwrite($stderr, 'static file headers ' . print_r($_RESPONSE['headers'], true));
+            debug('static file headers ' . print_r($_RESPONSE['headers'], true));
             return print(json_encode([
                 'statusCode' => 200,
                 'body' => $fileContents,
                 'headers' => array_merge(array('Content-Type' => $fileType, 'X-Binary' => ($isBase64?'true':'false')), $_RESPONSE['headers'])
             ]));
         } else {
-            fwrite($stderr, 'unable to read static file ' . $file); 
+            debug('unable to read static file ' . $file); 
             return print(json_encode([
                 'statusCode' => 404,
                 'body' => ''
@@ -127,30 +127,30 @@ try {
         }
     }
 
-    fwrite($stderr, 'checking for evolution');
+    debug('checking for evolution');
     // if grep Evolution wp-config.php then copy Evolution and ansible file
     $wpConfig = file_get_contents('wordpress/wp-config.php');
     if (strpos($wpConfig, 'Evolution.php') !== false) {
-        fwrite($stderr, 'found evolution');
+        debug('found evolution');
         $evolutionMode = true;
     }
 
     ob_start('buffer');
 
     if ($apiMode) {
-        fwrite($stderr, 'api-only mode');
+        debug('api-only mode');
         require_once 'wordpress/wp-config.php';
         // this might unintentionally bypass auth checks
         rest_get_server()->serve_request($_SERVER['REQUEST_URI']);     
     } else if ($_SERVER['REQUEST_URI'] != '/' && is_file('wordpress' . $_SERVER['REQUEST_URI'])) {
-        fwrite($stderr, 'specific non static file requested');
+        debug('specific non static file requested');
         require_once 'wordpress' . $_SERVER['REQUEST_URI'];
     } else if ($_SERVER['REQUEST_URI'] != '/' && is_dir('wordpress' . $_SERVER['REQUEST_URI'])) {
         $indexFile = strpos(strrev($_SERVER['REQUEST_URI']), '/') === 0 ? 'index.php' : '/index.php'; 
-        fwrite($stderr, 'specific non static directory requested, loading wordpress' . $_SERVER['REQUEST_URI'] . $indexFile);
+        debug('specific non static directory requested, loading wordpress' . $_SERVER['REQUEST_URI'] . $indexFile);
         require_once 'wordpress' . $_SERVER['REQUEST_URI'] . $indexFile;        
     } else {
-        fwrite($stderr, 'full wordpress mode');
+        debug('full wordpress mode');
         //require_once 'wordpress/index.php';
         require_once 'wordpress/wp-config.php';
         define('WP_USE_THEMES', true);
