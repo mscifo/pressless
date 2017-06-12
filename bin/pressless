@@ -57,6 +57,7 @@ program
     const packageJson = `{
   "name": "${name}",
   "dependencies": {
+    "binary-case": "^1.1.3",
     "serverless": "^1.0.0",
     "serverless-domain-manager": "^1.1.0"
   }
@@ -74,6 +75,7 @@ package:
   include:
     - handler.js
     - handler.php
+    - node_modules/binary-case/**
     - php
     - wordpress/**
     - Evolution.php
