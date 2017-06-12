@@ -90,7 +90,7 @@ try {
             $fileContents = file_get_contents($file);
 
             // convert binary data to base64
-            if (strpos($fileType, 'text/') === false && strpos($fileType, 'application/json') === false) {
+            if (strpos($fileType, 'text/') === false && strpos($fileType, 'application/json') === false && strpos($fileType, 'xml') === false) {
                 debug('base64 enconding file ' . $file . ' of type ' . $fileType);
                 $fileContents = base64_encode($fileContents);
                 $isBase64 = true;
