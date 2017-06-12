@@ -1,12 +1,13 @@
 <?php
 error_reporting(0);
 function debug($v) { fwrite(fopen('php://stderr', 'w'), $v."\n"); }
-//$fd = fopen('php://fd/3', 'r+');  // for getremainingtime
+//$fd = fopen('php://fd/3', 'r+');  // for getremainingtime, currently unused
 
 // initialize base response array
 $_RESPONSE = array('statusCode' => 200, 'body' => '', 'headers' => array());
 $_COOKIECOUNT = 0;
 
+// override header function so we can catch/process headers, instead of wordpress outputting them directly (and then possibly exiting)
 override_function('header', '$string', 'global $_RESPONSE;$parts = explode(": ", $string); if (is_array($parts) && count($parts) >= 2) { $_RESPONSE["headers"][$parts[0]] = $parts[1]; } else if (strpos($string, "HTTP/1.0 ") == 0) { $code = explode(" ", $string); if (is_array($code) && count($code) >= 2) { $_RESPONSE["statusCode"] = intval($code[1]); } } return null;');
 rename_function("__overridden__", '__overridden__header');
 // override setcookie function so we can capture the resulting header and modify the Set-Cookie header name to allow for multiple cookies to be set, which we process using binary case iteration in handler.js
@@ -22,6 +23,7 @@ $context = json_decode($argv[2], true) ?: [];
 $apiMode = $event['pressless_api_only'] ?: false;
 $wpDir = file_exists('web') ? 'web' : 'wordpress';
 
+// populate needed $_SERVER superglobal values
 $_SERVER['SERVER_PROTOCOL'] = 'HTTPS';
 $_SERVER['DOCUMENT_ROOT'] = '/var/task/' . $wpDir; // lambda specific!
 $_SERVER['HTTP_HOST'] = $event['headers']['Host'] ?: 'localhost';
@@ -31,6 +33,7 @@ $_SERVER['REQUEST_URI'] = $event['path'] ?: '/';
 $_SERVER['HTTP_X_FORWARDED_FOR'] = $event['headers']['X-Forwarded-For'];
 $_SERVER['HTTP_CLIENT_IP'] = $_SERVER['REMOTE_ADDR'] = $event['requestContext']['identity']['sourceIp'];
  
+// populate $_GET, $_POST, $_COOKIE superglobals
 if (!isset($event['queryStringParameters']) || !is_array($event['queryStringParameters'])) $event['queryStringParameters'] = array();
 foreach ($event['queryStringParameters'] as $k => $v) {
     if (strpos($k, '[]') > 0) {
@@ -44,6 +47,7 @@ foreach ($event['queryStringParameters'] as $k => $v) {
 debug('GET: ' . print_r($_GET, true));
 // ensure $_SERVER['REQUEST_URI'] has the query string if query string parameters exist
 $_SERVER['REQUEST_URI'] .= empty($_GET) ? '' : '?'.http_build_query($_GET);
+//$_SERVER['QUERY_STRING'] .= empty($_GET) ? '' : http_build_query($_GET);
 
 if (!isset($event['body'])) $event['body'] = '';
 $event['body'] = preg_match('%^[a-zA-Z0-9/+]*={0,2}$%', $event['body']) ? base64_decode($event['body']) : $event['body'];  // detect if post body is base64-encoded, and decode
@@ -80,6 +84,7 @@ function buffer($buffer) {
 // in case wordpress crashes, we want to know why
 function shutdown() {
     if (($error = error_get_last())) {
+        // since this function will be called for every request,
         // we don't want to print errors for E_NOTICE/E_WARNING
         if ($error['type'] == E_NOTICE || $error['type'] == E_WARNING) return;
         fwrite(fopen('php://stderr', 'w'), 'php error: ' . json_encode($error));
