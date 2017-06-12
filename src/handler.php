@@ -125,14 +125,14 @@ try {
         require_once $wpDir . '/wp-config.php';
         // this might unintentionally bypass auth checks
         rest_get_server()->serve_request($_SERVER['REQUEST_URI']);     
-    } else if ($_SERVER['REQUEST_URI'] != '/' && is_file('wordpress' . $_SERVER['REQUEST_URI'])) {
+    } else if ($event['path'] != '/' && is_file($wpDir . $event['path'])) {
         debug('specific non static file requested');
         $_SERVER['PHP_SELF'] = $event['path'];
         require_once $wpDir . $event['path'];
-    } else if ($_SERVER['REQUEST_URI'] != '/' && is_dir('wordpress' . $_SERVER['REQUEST_URI'])) {
-        $indexFile = strpos(strrev($_SERVER['REQUEST_URI']), '/') === 0 ? 'index.php' : '/index.php'; 
-        debug('specific non static directory requested, loading wordpress' . $_SERVER['REQUEST_URI'] . $indexFile);
-        require_once $wpDir . $_SERVER['REQUEST_URI'] . $indexFile;
+    } else if ($event['path'] != '/' && is_dir($wpDir . $event['path'])) {
+        $indexFile = strpos(strrev($event['path']), '/') === 0 ? 'index.php' : '/index.php'; 
+        debug('specific non static directory requested, loading wordpress' . $event['path'] . $indexFile);
+        require_once $wpDir . $event['path'] . $indexFile;   
     } else {
         debug('full wordpress mode');
         require_once $wpDir . '/index.php';
