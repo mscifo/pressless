@@ -1,5 +1,5 @@
 <?php
-error_reporting( E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_ERROR | E_PARSE | E_USER_ERROR | E_USER_WARNING | E_RECOVERABLE_ERROR );
+error_reporting(0);
 function debug($v) { fwrite(fopen('php://stderr', 'w'), $v."\n"); }
 //$fd = fopen('php://fd/3', 'r+');  // for getremainingtime
 
