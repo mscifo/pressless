@@ -27,7 +27,8 @@ if (!isset($event['queryStringParameters']) || !is_array($event['queryStringPara
 foreach ($event['queryStringParameters'] as $k => $v) {
     if (strpos($k, '[]') > 0) {
         // weird wordpress handling of array-like query string parameters
-        $_GET[str_replace('[]', '', $k)] = $v;
+        $properKey = str_replace('[]', '', $k);
+        $_GET[$properKey] = isset($_GET[$properKey]) ? $_GET[$properKey] . $v : $v;
     } else {
         $_GET[$k] = $v;
     }
