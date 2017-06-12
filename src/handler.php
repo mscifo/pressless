@@ -20,7 +20,9 @@ $_SERVER['HTTP_HOST'] = $event['headers']['Host'] ?: 'localhost';
 $_SERVER['SERVER_NAME'] = $event['headers']['Host'] ?: 'localhost';
 $_SERVER['REQUEST_METHOD'] = $event['httpMethod'] ?: 'GET';
 $_SERVER['REQUEST_URI'] = $event['path'] ?: '/';
-
+$_SERVER['HTTP_X_FORWARDED_FOR'] = $event['headers']['X-Forwarded-For'];
+$_SERVER['HTTP_CLIENT_IP'] = $_SERVER['REMOTE_ADDR'] = $event['requestContext']['identity']['sourceIp'];
+ 
 if (!isset($event['queryStringParameters']) || !is_array($event['queryStringParameters'])) $event['queryStringParameters'] = array();
 foreach ($event['queryStringParameters'] as $k => $v) {
     if (strpos($k, '[]') > 0) {
@@ -31,11 +33,13 @@ foreach ($event['queryStringParameters'] as $k => $v) {
     }
 }
 debug('GET: ' . print_r($_GET, true));
+// ensure $_SERVER['REQUEST_URI'] has the query string if query string parameters exist
+$_SERVER['REQUEST_URI'] .= empty($_GET) ? '' : '?'.http_build_query($_GET);
 
 if (!isset($event['body'])) $event['body'] = '';
 parse_str($event['body'], $_POST);
 debug('POST: ' . print_r($_POST, true));
-
+ 
 // in case wordpress crashes/exits, we don't want to lose any output, which 
 // we'll use in the shutdown function
 function buffer($buffer) {
@@ -144,6 +148,7 @@ try {
         rest_get_server()->serve_request($_SERVER['REQUEST_URI']);     
     } else if ($_SERVER['REQUEST_URI'] != '/' && is_file('wordpress' . $_SERVER['REQUEST_URI'])) {
         debug('specific non static file requested');
+        $_SERVER['PHP_SELF'] = $event['path'];
         require_once 'wordpress' . $_SERVER['REQUEST_URI'];
     } else if ($_SERVER['REQUEST_URI'] != '/' && is_dir('wordpress' . $_SERVER['REQUEST_URI'])) {
         $indexFile = strpos(strrev($_SERVER['REQUEST_URI']), '/') === 0 ? 'index.php' : '/index.php'; 
