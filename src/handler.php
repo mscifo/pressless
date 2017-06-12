@@ -81,7 +81,7 @@ try {
     // serve static files
     debug('path is ' . $event['path']);
     $path_parts = pathinfo($event['path']);   
-    if ($event['path'] != '/' && in_array($path_parts['extension'], array('html','htm','css','txt','csv','scss','json','xml','ico','js','gif','jpg','jpeg','png','pdf','otf','ttf','woff','eot','svg'))) {
+    if ($event['path'] != '/' && in_array($path_parts['extension'], array('html','htm','css','txt','csv','scss','json','xml','ico','js','gif','jpg','jpeg','png','pdf','otf','ttf','woff','eot','svg','zip'))) {
         $file = (strpos($event['path'], '/tmp/') === 0) ? $event['path'] : $wpDir . $event['path'];
         if (is_readable($file)) {
             debug('serving static file ' . $file); 
