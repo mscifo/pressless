@@ -12,10 +12,10 @@ override_function('header', '$string', 'global $_RESPONSE;$parts = explode(": ",
 $event = json_decode($argv[1], true) ?: [];
 $context = json_decode($argv[2], true) ?: [];
 $apiMode = $event['pressless_api_only'] ?: false;
-$evolutionMode = $event['pressless_evolution'] ?: false;
+$wpDir = file_exists('web') ? 'web' : 'wordpress';
 
 $_SERVER['SERVER_PROTOCOL'] = 'HTTPS';
-$_SERVER["DOCUMENT_ROOT"] = '/var/task/wordpress'; // lambda specific!
+$_SERVER['DOCUMENT_ROOT'] = '/var/task/' . $wpDir; // lambda specific!
 $_SERVER['HTTP_HOST'] = $event['headers']['Host'] ?: 'localhost';
 $_SERVER['SERVER_NAME'] = $event['headers']['Host'] ?: 'localhost';
 $_SERVER['REQUEST_METHOD'] = $event['httpMethod'] ?: 'GET';
@@ -67,7 +67,7 @@ function buffer($buffer) {
 
 // in case wordpress crashes, we want to know why
 function shutdown() {
-   if (($error = error_get_last())) {
+    if (($error = error_get_last())) {
         // we don't want to print errors for E_NOTICE/E_WARNING
         if ($error['type'] == E_NOTICE || $error['type'] == E_WARNING) return;
         fwrite(fopen('php://stderr', 'w'), 'php error: ' . json_encode($error));
@@ -81,8 +81,8 @@ try {
     // serve static files
     debug('path is ' . $event['path']);
     $path_parts = pathinfo($event['path']);   
-    if ($event['path'] != '/' && ((strpos($event['path'], '/wp-content/') === 0 && $path_parts['extension'] != 'php') || in_array($path_parts['extension'], array('html','htm','css','txt','csv','scss','json','xml','ico','js','gif','jpg','jpeg','png','pdf','otf','ttf','woff','eot','svg')))) {
-        $file = 'wordpress' . $event['path'];
+    if ($event['path'] != '/' && in_array($path_parts['extension'], array('html','htm','css','txt','csv','scss','json','xml','ico','js','gif','jpg','jpeg','png','pdf','otf','ttf','woff','eot','svg'))) {
+        $file = (strpos($event['path'], '/tmp/') === 0) ? $event['path'] : $wpDir . $event['path'];
         if (is_readable($file)) {
             debug('serving static file ' . $file); 
             $isBase64 = false;
@@ -118,41 +118,24 @@ try {
         }
     }
 
-    debug('checking for evolution');
-    // if grep Evolution wp-config.php then copy Evolution and ansible file
-    $wpConfig = file_get_contents('wordpress/wp-config.php');
-    if (strpos($wpConfig, 'Evolution.php') !== false) {
-        debug('found evolution');
-        $evolutionMode = true;
-    }
-
     ob_start('buffer');
 
     if ($apiMode) {
         debug('api-only mode');
-        require_once 'wordpress/wp-config.php';
+        require_once $wpDir . '/wp-config.php';
         // this might unintentionally bypass auth checks
         rest_get_server()->serve_request($_SERVER['REQUEST_URI']);     
     } else if ($_SERVER['REQUEST_URI'] != '/' && is_file('wordpress' . $_SERVER['REQUEST_URI'])) {
         debug('specific non static file requested');
         $_SERVER['PHP_SELF'] = $event['path'];
-        require_once 'wordpress' . $_SERVER['REQUEST_URI'];
+        require_once $wpDir . $event['path'];
     } else if ($_SERVER['REQUEST_URI'] != '/' && is_dir('wordpress' . $_SERVER['REQUEST_URI'])) {
         $indexFile = strpos(strrev($_SERVER['REQUEST_URI']), '/') === 0 ? 'index.php' : '/index.php'; 
         debug('specific non static directory requested, loading wordpress' . $_SERVER['REQUEST_URI'] . $indexFile);
-        require_once 'wordpress' . $_SERVER['REQUEST_URI'] . $indexFile;        
+        require_once $wpDir . $_SERVER['REQUEST_URI'] . $indexFile;
     } else {
         debug('full wordpress mode');
-        //require_once 'wordpress/index.php';
-        require_once 'wordpress/wp-config.php';
-        define('WP_USE_THEMES', true);
-        $wp_did_header = true;
-        wp();
-        if ($evolutionMode) {
-            require_once 'wordpress/wp/wp-includes/template-loader.php';
-        } else {
-            require_once 'wordpress/wp-includes/template-loader.php';
-        }
+        require_once $wpDir . '/index.php';
     }
 } catch (Exception $e) {
     $_RESPONSE['statusCode'] = 503;
