@@ -43,6 +43,10 @@ parse_str($event['body'], $_POST);
 $_POST = array_map(function ($v) { return is_numeric($v) ? (int)$v : $v; }, $_POST);
 debug('POST: ' . var_export($_POST, true));
  
+if (!isset($event['headers']['Cookie'])) $event['headers']['Cookie'] = '';
+parse_str(str_replace('; ', '&', $event['headers']['Cookie']), $_COOKIE);
+debug('COOKIE: ' . print_r($_COOKIE, true));
+ 
 // capture all output
 function buffer($buffer) {
     global $_RESPONSE;
