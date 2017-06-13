@@ -1,6 +1,7 @@
 <?php
 error_reporting(0);
 function debug($v) { fwrite(fopen('php://stderr', 'w'), $v."\n"); }
+function render($code, $headers = array(), $body = '') { $_RESPONSE['statusCode'] = $code; $_RESPONSE['headers'] = array_merge($headers, $_RESPONSE['headers']); print $body; }
 //$fd = fopen('php://fd/3', 'r+');  // for getremainingtime, currently unused
 
 // initialize base response array
@@ -32,7 +33,7 @@ $_SERVER['REQUEST_METHOD'] = $event['httpMethod'] ?: 'GET';
 $_SERVER['REQUEST_URI'] = $event['path'] ?: '/';
 $_SERVER['HTTP_X_FORWARDED_FOR'] = $event['headers']['X-Forwarded-For'];
 $_SERVER['HTTP_CLIENT_IP'] = $_SERVER['REMOTE_ADDR'] = $event['requestContext']['identity']['sourceIp'];
- 
+
 // populate $_GET, $_POST, $_COOKIE superglobals
 if (!isset($event['queryStringParameters']) || !is_array($event['queryStringParameters'])) $event['queryStringParameters'] = array();
 foreach ($event['queryStringParameters'] as $k => $v) {
@@ -54,11 +55,11 @@ $event['body'] = preg_match('%^[a-zA-Z0-9/+]*={0,2}$%', $event['body']) ? base64
 parse_str($event['body'], $_POST);
 $_POST = array_map(function ($v) { return is_numeric($v) ? (int)$v : $v; }, $_POST);
 debug('POST: ' . var_export($_POST, true));
- 
+
 if (!isset($event['headers']['Cookie'])) $event['headers']['Cookie'] = '';
 parse_str(str_replace('; ', '&', $event['headers']['Cookie']), $_COOKIE);
 debug('COOKIE: ' . print_r($_COOKIE, true));
- 
+
 // capture all output
 function buffer($buffer) {
     global $_RESPONSE;
@@ -68,23 +69,18 @@ function buffer($buffer) {
     // instance is passed in the event by ApiGateway
     $newBuffer = preg_replace('/(?<!(?:c=0|ltr))&amp;load%5B%5D=/', '', $buffer);
     if (!empty($newBuffer)) $buffer = $newBuffer;
-    
-    if (strpos($buffer, '{\"statusCode\":') === 0) {
-        // already proper json encoded object
-        return $buffer;
-    } else {
-        return json_encode([
-            'statusCode' => intval($_RESPONSE['statusCode']) ?: 200,
-            'body' => $buffer,
-            'headers' => $_RESPONSE['headers'] ?: array()
-        ]);
-    }
+
+    return json_encode([
+        'statusCode' => intval($_RESPONSE['statusCode']) ?: 200,
+        'body' => $buffer,
+        'headers' => $_RESPONSE['headers'] ?: array()
+    ]);
 }
 
 // in case wordpress crashes, we want to know why
 function shutdown() {
     if (($error = error_get_last())) {
-        // since this function will be called for every request,
+        // since this function will be called for every request, 
         // we don't want to print errors for E_NOTICE/E_WARNING
         if ($error['type'] == E_NOTICE || $error['type'] == E_WARNING) return;
         fwrite(fopen('php://stderr', 'w'), 'php error: ' . json_encode($error));
@@ -121,17 +117,10 @@ try {
             if ($path_parts['extension'] == 'html' || $path_parts['extension'] == 'htm') $fileType = 'text/html';
 
             debug('static file headers ' . print_r($_RESPONSE['headers'], true));
-            return print(json_encode([
-                'statusCode' => 200,
-                'body' => $fileContents,
-                'headers' => array_merge(array('Content-Type' => $fileType, 'X-Binary' => ($isBase64?'true':'false')), $_RESPONSE['headers'])
-            ]));
+            return render(200, array('Content-Type' => $fileType, 'X-Binary' => ($isBase64?'true':'false')), $fileContents);
         } else {
             debug('unable to read static file ' . $file); 
-            return print(json_encode([
-                'statusCode' => 404,
-                'body' => ''
-            ]));
+            return render(404);
         }
     }
 
@@ -149,15 +138,13 @@ try {
     } else if ($event['path'] != '/' && is_dir($wpDir . $event['path'])) {
         $indexFile = strpos(strrev($event['path']), '/') === 0 ? 'index.php' : '/index.php'; 
         debug('specific non static directory requested, loading wordpress' . $event['path'] . $indexFile);
-        require_once $wpDir . $event['path'] . $indexFile;   
+        require_once $wpDir . $event['path'] . $indexFile;
     } else {
         debug('full wordpress mode');
         require_once $wpDir . '/index.php';
     }
 } catch (Exception $e) {
-    $_RESPONSE['statusCode'] = 503;
-    $_RESPONSE['headers'] = array('Content-Type' => 'text/html');
-    print $e->getMessage() . $e->getTraceAsString();
+    return render(503, array('Content-Type' => 'text/html'), $e->getMessage() . $e->getTraceAsString());
 } finally {
     ob_end_flush(); 
 }
