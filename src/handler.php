@@ -18,6 +18,52 @@ rename_function("__overridden__", '__overridden__setcookie');
 override_function('mysql_real_escape_string', '$string', 'return mysqli_real_escape_string($string);');
 rename_function("__overridden__", '__overridden__mysql_real_escape_string');
 
+// override file functions to force an s3 path for writes since lambda filesystem is readonly
+// @see http://docs.aws.amazon.com/aws-sdk-php/v3/guide/service/s3-stream-wrapper.html
+function s3_func_get_args() { return array_map(function ($v) { $nv = strpos($v, 'wp-content/uploads/') > 0 ? str_replace('https://', 's3://', get_site_url()).preg_replace('/^.*?\/wp-content\/uploads/', '/wp-content/uploads', $v) : $v; debug('s3_func_get_args: ' . $v . ' => ' . $nv); return $nv; }, func_get_args()); }
+rename_function('fopen', '__alias__fopen');
+override_function('fopen', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__fopen');
+rename_function('file_get_contents', '__alias__file_get_contents');
+override_function('file_get_contents', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__file_get_contents');
+rename_function('file_put_contents', '__alias__file_put_contents');
+override_function('file_put_contents', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__file_put_contents');
+rename_function('copy', '__alias__copy');
+override_function('copy', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__copy');
+rename_function('rename', '__alias__rename');
+override_function('rename', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__rename');
+rename_function('unlink', '__alias__unlink');
+override_function('unlink', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__unlink');
+rename_function('mkdir', '__alias__mkdir');
+override_function('mkdir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__mkdir');
+rename_function('rmdir', '__alias__rmdir');
+override_function('rmdir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__rmdir');
+rename_function('filesize', '__alias__filesize');
+override_function('filesize', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__filesize');
+rename_function('is_file', '__alias__is_file');
+override_function('is_file', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__is_file');
+rename_function('file_exists', '__alias__file_exists');
+override_function('file_exists', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__file_exists');
+rename_function('filetype', '__alias__filetype');
+override_function('filetype', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__filetype');
+rename_function('file', '__alias__file');
+override_function('file', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__file');
+rename_function('filemtime', '__alias__filemtime');
+override_function('filemtime', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__filemtime');
+
 // Get event data and context object
 $event = json_decode($argv[1], true) ?: [];
 $context = json_decode($argv[2], true) ?: [];
