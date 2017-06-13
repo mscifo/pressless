@@ -75,6 +75,7 @@ package:
   include:
     - handler.js
     - handler.php
+    - aws.phar
     - node_modules/binary-case/**
     - php
     - wordpress/**
@@ -245,6 +246,7 @@ program
         // copy files into .pressless
         fse.copySync(path.resolve(path.dirname(__dirname),'./src/handler.js'), '.pressless/handler.js');
         fse.copySync(path.resolve(path.dirname(__dirname),'./src/handler.php'), '.pressless/handler.php');
+        fse.copySync(path.resolve(path.dirname(__dirname),'./lib/aws.phar'), '.pressless/aws.phar');
         fse.copySync(path.resolve(path.dirname(__dirname),'./bin/php'), '.pressless/php');
                                                                                
         console.log('Pressless: Importing existing Wordpress site...');

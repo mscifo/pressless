@@ -1,5 +1,7 @@
 <?php
 error_reporting(0);
+require_once 'aws.phar';
+
 function debug($v) { fwrite(fopen('php://stderr', 'w'), $v."\n"); }
 function render($code, $headers = array(), $body = '') { $_RESPONSE['statusCode'] = $code; $_RESPONSE['headers'] = array_merge($headers, $_RESPONSE['headers']); print $body; }
 //$fd = fopen('php://fd/3', 'r+');  // for getremainingtime, currently unused
@@ -20,7 +22,7 @@ rename_function("__overridden__", '__overridden__mysql_real_escape_string');
 
 // override file functions to force an s3 path for writes since lambda filesystem is readonly
 // @see http://docs.aws.amazon.com/aws-sdk-php/v3/guide/service/s3-stream-wrapper.html
-function s3_func_get_args() { return array_map(function ($v) { $nv = strpos($v, 'wp-content/uploads/') > 0 ? str_replace('https://', 's3://', get_site_url()).preg_replace('/^.*?\/wp-content\/uploads/', '/wp-content/uploads', $v) : $v; debug('s3_func_get_args: ' . $v . ' => ' . $nv); return $nv; }, func_get_args()); }
+function s3_func_get_args() { return array_map(function ($v) { $nv = strpos($v, 'wp-content/uploads/') > 0 ? str_replace('https://', 's3://', get_home_url()).preg_replace('/^.*?\/wp-content\/uploads/', '/wp-content/uploads', $v) : $v; debug('s3_func_get_args: ' . $v . ' => ' . $nv); return $nv; }, func_get_args()); }
 rename_function('fopen', '__alias__fopen');
 override_function('fopen', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
 rename_function("__overridden__", '__overridden__fopen');
@@ -109,12 +111,46 @@ debug('COOKIE: ' . print_r($_COOKIE, true));
 // capture all output
 function buffer($buffer) {
     global $_RESPONSE;
+    global $event;
 
     // we need to fix references to load-scripts.php and load-styles.php, since they split the 
     // comma separated styles/scripts into multiple 'load[]' query parameters and only the last 
     // instance is passed in the event by ApiGateway
     $newBuffer = preg_replace('/(?<!(?:c=0|ltr))&amp;load%5B%5D=/', '', $buffer);
     if (!empty($newBuffer)) $buffer = $newBuffer;
+
+    // allow bypassing of cacher for success responses, in case we want to do an initial crawl or specifically hit origin
+    if ($event['httpMethod'] == 'GET' && !isset($event['headers']['X-Bypass-Cache']) && intval($_RESPONSE['statusCode']) > 200 && intval($_RESPONSE['statusCode']) < 300) {
+        $client = new \Aws\S3\S3Client();
+        $client->registerStreamWrapper();
+
+        debug('Writing buffer to s3://'.get_home_url() . $event['path']);
+        if (file_put_contents('s3://'.get_home_url() . $event['path'], $buffer) > 0) {
+            // should we even be caching POSTs??
+            /*
+            if ($event['httpMethod'] == 'POST') {
+                $postFields = '';
+                foreach ($_POST as $k=>$v) {
+                    $postFields .= '<input type="hidden" name="'.$k.'" value="'.$v.'"/>';
+                }
+                return json_encode([
+                    'statusCode' => 200,
+                    'body' => '<html><body><form method="POST" action="' . get_home_url() . $_SERVER['REQUEST_URI'] . '">'.$postFields.'</form><script>document.forms[0].submit();</script><body></html>',
+                    'headers' => array('Content-Type' => 'text/html')
+                ]);
+            }
+            */
+            if ($event['httpMethod'] == 'GET') {
+                return json_encode([
+                    'statusCode' => 301,
+                    'body' => '',
+                    'headers' => array('Location: ' . get_home_url() . $_SERVER['REQUEST_URI'])
+                ]);
+            }
+        } else {
+            debug('Failed writing buffer to s3://'.get_home_url() . $event['path']);
+        }
+    }
 
     return json_encode([
         'statusCode' => intval($_RESPONSE['statusCode']) ?: 200,
