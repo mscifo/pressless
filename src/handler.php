@@ -12,7 +12,7 @@ $_COOKIECOUNT = 0;
 override_function('header', '$string', 'global $_RESPONSE;$parts = explode(": ", $string); if (is_array($parts) && count($parts) >= 2) { $_RESPONSE["headers"][$parts[0]] = $parts[1]; } else if (strpos($string, "HTTP/1.0 ") == 0) { $code = explode(" ", $string); if (is_array($code) && count($code) >= 2) { $_RESPONSE["statusCode"] = intval($code[1]); } } return null;');
 rename_function("__overridden__", '__overridden__header');
 // override setcookie function so we can capture the resulting header and modify the Set-Cookie header name to allow for multiple cookies to be set, which we process using binary case iteration in handler.js
-override_function('setcookie', '$name,$value,$expire,$path,$domain', 'global $_RESPONSE;global $_COOKIECOUNT;$_RESPONSE["headers"]["X-Set-Cookie-".++$_COOKIECOUNT] = rawurlencode($name) . "=" . rawurlencode($value) . (empty($expire) ? "" : "; expires=" . gmdate("D, d-M-Y H:i:s", $expire) . " GMT") . (empty($path) ? "" : "; path=" . $path) . (empty($domain) ? "" : "; domain=" . $domain) . "; secure" . "; HttpOnly"; return null;');
+override_function('setcookie', '', 'global $_RESPONSE;global $_COOKIECOUNT;$args = func_get_args();$_RESPONSE["headers"]["X-Set-Cookie-".++$_COOKIECOUNT] = rawurlencode($args[0]) . "=" . rawurlencode($args[1]) . (empty($args[2]) ? "" : "; expires=" . gmdate("D, d-M-Y H:i:s", $args[2]) . " GMT") . (empty($args[3]) ? "" : "; path=" . $args[3]) . (empty($args[4]) ? "" : "; domain=" . $args[4]) . (empty($args[5]) ? "" : "; secure" . $args[5]) . (empty($args[6]) ? "" : "; HttpOnly" . $args[6]); return null;');
 rename_function("__overridden__", '__overridden__setcookie');
 // possibly needed by some older plugins
 override_function('mysql_real_escape_string', '$string', 'return mysqli_real_escape_string($string);');
@@ -146,5 +146,5 @@ try {
 } catch (Exception $e) {
     return render(503, array('Content-Type' => 'text/html'), $e->getMessage() . $e->getTraceAsString());
 } finally {
-    ob_end_flush(); 
+    ob_end_flush();
 }
