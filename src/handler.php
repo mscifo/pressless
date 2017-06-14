@@ -22,7 +22,7 @@ rename_function("__overridden__", '__overridden__mysql_real_escape_string');
 
 // override file functions to force an s3 path for writes since lambda filesystem is readonly
 // @see http://docs.aws.amazon.com/aws-sdk-php/v3/guide/service/s3-stream-wrapper.html
-function s3_func_get_args() { return array_map(function ($v) { $nv = strpos($v, 'wp-content/uploads/') > 0 ? str_replace('https://', 's3://', get_home_url()).preg_replace('/^.*?\/wp-content\/uploads/', '/wp-content/uploads', $v) : $v; debug('s3_func_get_args: ' . $v . ' => ' . $nv); return $nv; }, func_get_args()); }
+function s3_func_get_args() { return array_map(function ($v) { $nv = strpos($v, 'wp-content/uploads/') > 0 ? str_replace('https://', 's3://', PRESSLESS_S3_WEBSITE_BUCKET).preg_replace('/^.*?\/wp-content\/uploads/', '/wp-content/uploads', $v) : $v; debug('s3_func_get_args: ' . $v . ' => ' . $nv); return $nv; }, func_get_args()); }
 rename_function('fopen', '__alias__fopen');
 override_function('fopen', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
 rename_function("__overridden__", '__overridden__fopen');
@@ -65,6 +65,22 @@ rename_function("__overridden__", '__overridden__file');
 rename_function('filemtime', '__alias__filemtime');
 override_function('filemtime', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
 rename_function("__overridden__", '__overridden__filemtime');
+rename_function('is_dir', '__alias__is_dir');
+override_function('is_dir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__is_dir');
+rename_function('opendir', '__alias__opendir');
+override_function('opendir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__opendir');
+rename_function('readdir', '__alias__readdir');
+override_function('readdir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__readdir');
+rename_function('rewinddir', '__alias__rewinddir');
+override_function('rewinddir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__rewinddir');
+rename_function('closedir', '__alias__closedir');
+override_function('closedir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+rename_function("__overridden__", '__overridden__closedir');
+
 
 // Get event data and context object
 $event = json_decode($argv[1], true) ?: [];
@@ -121,11 +137,62 @@ function buffer($buffer) {
 
     // allow bypassing of cacher for success responses, in case we want to do an initial crawl or specifically hit origin
     if ($event['httpMethod'] == 'GET' && !isset($event['headers']['X-Bypass-Cache']) && intval($_RESPONSE['statusCode']) > 200 && intval($_RESPONSE['statusCode']) < 300) {
-        $client = new \Aws\S3\S3Client();
-        $client->registerStreamWrapper();
+        $s3Client = new \Aws\S3\S3Client();
+        $s3Client->registerStreamWrapper();
 
-        debug('Writing buffer to s3://'.get_home_url() . $event['path']);
-        if (file_put_contents('s3://'.get_home_url() . $event['path'], $buffer) > 0) {
+        if (!is_dir('s3://' . PRESSLESS_S3_LOGGING_BUCKET)) {
+            debug('Creating s3://' . PRESSLESS_S3_LOGGING_BUCKET . ' logging bucket');
+            try {
+                $result = $s3Client->createBucket(['ACL' => 'private', 'Bucket' => PRESSLESS_S3_LOGGING_BUCKET]);
+            } catch (\Aws\Exception\AwsException $e) {
+               debug('Error creating s3://' . PRESSLESS_S3_LOGGING_BUCKET . ' logging bucket: ' . $e->getMessage());
+            }
+        }
+
+        if (!is_dir('s3://' . PRESSLESS_S3_WEBSITE_BUCKET)) {
+            debug('Creating s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' bucket');
+            try {
+                $result = $s3Client->createBucket(['ACL' => 'public', 'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET]);
+                $result = $client->putBucketWebsite([
+                    'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
+                    'WebsiteConfiguration' => [
+                        'ErrorDocument' => [
+                            'Key' => ''
+                        ],
+                        'IndexDocument' => [
+                            'Suffix' => 'index.html'
+                        ],
+                        'RoutingRules' => [
+                            [
+                                'Condition' => [
+                                    'HttpErrorCodeReturnedEquals' => '404'
+                                ],
+                                'Redirect' => [
+                                    'HostName' => PRESSLESS_DOMAIN,
+                                    'HttpRedirectCode' => '302',
+                                    'Protocol' => 'https',
+                                    'ReplaceKeyWith' => ''
+                                ]
+                            ]
+                        ]
+                    ]
+                ]);
+                $result = $client->putBucketLogging([
+                    'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
+                    'BucketLoggingStatus' => [
+                        'LoggingEnabled' => [
+                            'TargetBucket' => PRESSLESS_S3_LOGGING_BUCKET,
+                            'TargetPrefix' => PRESSLESS_S3_WEBSITE_BUCKET . date('/Y/m/d/'),
+                        ]
+                    ]
+                ]);
+            } catch (\Aws\Exception\AwsException $e) {
+                debug('Error creating s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' bucket: ' . $e->getMessage());
+            }
+        }
+
+        debug('Writing buffer to s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $event['path']);
+        if (file_put_contents('s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $event['path'], $buffer) > 0) {
             // should we even be caching POSTs??
             /*
             if ($event['httpMethod'] == 'POST') {
@@ -135,7 +202,7 @@ function buffer($buffer) {
                 }
                 return json_encode([
                     'statusCode' => 200,
-                    'body' => '<html><body><form method="POST" action="' . get_home_url() . $_SERVER['REQUEST_URI'] . '">'.$postFields.'</form><script>document.forms[0].submit();</script><body></html>',
+                    'body' => '<html><body><form method="POST" action="' . PRESSLESS_S3_WEBSITE_BUCKET . $_SERVER['REQUEST_URI'] . '">'.$postFields.'</form><script>document.forms[0].submit();</script><body></html>',
                     'headers' => array('Content-Type' => 'text/html')
                 ]);
             }
@@ -144,11 +211,11 @@ function buffer($buffer) {
                 return json_encode([
                     'statusCode' => 301,
                     'body' => '',
-                    'headers' => array('Location: ' . get_home_url() . $_SERVER['REQUEST_URI'])
+                    'headers' => array('Location: http://' . PRESSLESS_S3_WEBSITE_BUCKET . $_SERVER['REQUEST_URI'])
                 ]);
             }
         } else {
-            debug('Failed writing buffer to s3://'.get_home_url() . $event['path']);
+            debug('Failed writing buffer to s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $event['path']);
         }
     }
 

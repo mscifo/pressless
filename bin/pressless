@@ -37,9 +37,31 @@ function getDomain() {
     }
 }
 
+function getWebsiteBucket() {
+    const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
+    var matches = serverlessYml.toString().match(/websiteBucket: (.*?)\n/);
+    if (matches && matches[1]) {
+        return matches[1];
+    } else {
+        console.log('Pressless: Unable to determine website bucket for project.');
+        process.exit(1);
+    }
+}
+
+function getLoggingBucket() {
+    const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
+    var matches = serverlessYml.toString().match(/loggingBucket: (.*?)\n/);
+    if (matches && matches[1]) {
+        return matches[1];
+    } else {
+        console.log('Pressless: Unable to determine logging bucket for project.');
+        process.exit(1);
+    }
+}
+
 program
-  .command('setup <domain>')
-  .description('Setup pressless')
+  .command('setup <domain> <website_bucket>')
+  .description('Setup pressless configuration and install dependencies')
   .option("-e, --env <env>", "Environment to use")
   .option("-c, --certificate <certificate>", "AWS ACM certificate name to use")
   .option("-r, --region <region>", "Region to use")
@@ -51,8 +73,10 @@ program
     }
  
     domain = domain.toLowerCase();
+    website_bucket = website_bucket.toLowerCase();
     const name = domain.replace(/[\.\_\']/g, '-').substring(0, domain.length - (options.env||'dev').length - (options.region||'us-east-1').length - '---lambdaRole'.length);  // created iam role must be <= 64 chars
     const certificate = options.certificate ? `certificateName: '${options.certificate}'` : '';
+    const loggingBucket = 'pressless-logs-' + bin2hex(openssl_random_pseudo_bytes(10));
 
     const packageJson = `{
   "name": "${name}",
@@ -88,6 +112,9 @@ plugins:
   - serverless-domain-manager
 
 custom:
+  pressless:
+    loggingBucket: ${loggingBucket}
+    websiteBucket: ${website_bucket}
   customDomain:
     basePath:
     domainName: ${domain}
@@ -231,6 +258,8 @@ program
     }
 
     const domain = getDomain();
+    const websiteBucket = getWebsiteBucket();
+    const loggingBucket = getLoggingBucket();
  
     try { fs.unlinkSync(os.tmpdir() + '/wordpress_latest.tar.gz'); } catch (e) {}
     console.log('Pressless: Downloading latest Wordpress release to ' + os.tmpdir() + '...');
@@ -291,9 +320,8 @@ program
 
         console.log('Pressless: Modifying wordpress config...');
         // modify copied wp-config.php
-        // set upload directory to /tmp, since lambda doesn't provide a writable filesystem
-        var tmpDir = isEvolution ? '../../../../tmp/' + domain + '-uploads' : '../../../tmp/' + domain + '-uploads';
-        wpConfig = wpConfig.replace('<?php', "<?php\ndefine('UPLOADS', '" + tmpDir + "');\n");
+        // set pressless constants so handler.php knows about them
+        wpConfig = wpConfig.replace('<?php', "<?php\ndefine('PRESSLESS_DOMAIN', '" + domain + "');\ndefine('PRESSLESS_S3_WEBSITE_BUCKET', '" + websiteBucket + "');\ndefine('PRESSLESS_S3_LOGGING_BUCKET', '" + loggingBucket + '");\n');
         fs.writeFileSync('.pressless/wordpress/wp-config.php', wpConfig);
 
         const pwd = shell.pwd().toString();
