@@ -2,8 +2,8 @@
 error_reporting(0);
 require_once 'aws.phar';
 
-function debug($v) { fwrite(fopen('php://stderr', 'w'), $v."\n"); }
-function render($code, $headers = array(), $body = '') { $_RESPONSE['statusCode'] = $code; $_RESPONSE['headers'] = array_merge($headers, $_RESPONSE['headers']); print $body; }
+function debug($v) { fwrite(STDERR, $v."\n"); }
+function render($code, $headers = array(), $body = '') { global $_RESPONSE; $_RESPONSE['statusCode'] = $code; $_RESPONSE['headers'] = array_merge($headers, $_RESPONSE['headers']); print $body; }
 //$fd = fopen('php://fd/3', 'r+');  // for getremainingtime, currently unused
 
 // initialize base response array
@@ -22,65 +22,67 @@ rename_function("__overridden__", '__overridden__mysql_real_escape_string');
 
 // override file functions to force an s3 path for writes since lambda filesystem is readonly
 // @see http://docs.aws.amazon.com/aws-sdk-php/v3/guide/service/s3-stream-wrapper.html
-function s3_func_get_args() { return array_map(function ($v) { $nv = strpos($v, 'wp-content/uploads/') > 0 ? str_replace('https://', 's3://', PRESSLESS_S3_WEBSITE_BUCKET).preg_replace('/^.*?\/wp-content\/uploads/', '/wp-content/uploads', $v) : $v; debug('s3_func_get_args: ' . $v . ' => ' . $nv); return $nv; }, func_get_args()); }
-rename_function('fopen', '__alias__fopen');
-override_function('fopen', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
-rename_function("__overridden__", '__overridden__fopen');
+debug('Initializing s3 stream wrapper');
+$s3Client = new \Aws\S3\S3Client();
+$s3Client->registerStreamWrapper();
+function s3_func_get_args($args) { return array_map(function ($v) { if (!is_string($v)) return $v; $nv = strpos($v, 'wp-content/uploads/') > 0 ? 's3://' . PRESSLESS_S3_WEBSITE_BUCKET . preg_replace('/^.*?\/wp-content\/uploads/', '/wp-content/uploads', $v) : $v; if ($v != $nv) debug('s3_func_get_args: ' . $v . ' => ' . $nv); return $nv; }, $args); }
 rename_function('file_get_contents', '__alias__file_get_contents');
-override_function('file_get_contents', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('file_get_contents', '', 'debug("file_get_contents:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__file_get_contents", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__file_get_contents');
+rename_function('fopen', '__alias__fopen');
+override_function('fopen', '', 'debug("fopen:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__fopen", s3_func_get_args(func_get_args()));');
+rename_function("__overridden__", '__overridden__fopen');
 rename_function('file_put_contents', '__alias__file_put_contents');
-override_function('file_put_contents', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('file_put_contents', '', 'debug("file_put_contents:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__file_put_contents", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__file_put_contents');
 rename_function('copy', '__alias__copy');
-override_function('copy', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('copy', '', 'debug("copy:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__copy", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__copy');
 rename_function('rename', '__alias__rename');
-override_function('rename', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('rename', '', 'debug("rename:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__rename", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__rename');
 rename_function('unlink', '__alias__unlink');
-override_function('unlink', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('unlink', '', 'debug("unlink:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__unlink", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__unlink');
 rename_function('mkdir', '__alias__mkdir');
-override_function('mkdir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('mkdir', '', 'debug("mkdir:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__mkdir", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__mkdir');
 rename_function('rmdir', '__alias__rmdir');
-override_function('rmdir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('rmdir', '', 'debug("rmdir:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__rmdir", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__rmdir');
 rename_function('filesize', '__alias__filesize');
-override_function('filesize', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('filesize', '', 'debug("filesize:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__filesize", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__filesize');
 rename_function('is_file', '__alias__is_file');
-override_function('is_file', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('is_file', '', 'debug("is_file:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__is_file", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__is_file');
 rename_function('file_exists', '__alias__file_exists');
-override_function('file_exists', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('file_exists', '', 'debug("file_exists:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__file_exists", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__file_exists');
 rename_function('filetype', '__alias__filetype');
-override_function('filetype', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('filetype', '', 'debug("filetype:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__filetype", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__filetype');
 rename_function('file', '__alias__file');
-override_function('file', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('file', '', 'debug("file:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__file", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__file');
 rename_function('filemtime', '__alias__filemtime');
-override_function('filemtime', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('filemtime', '', 'debug("filemtime:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__filemtime", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__filemtime');
 rename_function('is_dir', '__alias__is_dir');
-override_function('is_dir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('is_dir', '', 'debug("is_dir:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__is_dir", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__is_dir');
 rename_function('opendir', '__alias__opendir');
-override_function('opendir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('opendir', '', 'debug("opendir:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__opendir", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__opendir');
 rename_function('readdir', '__alias__readdir');
-override_function('readdir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('readdir', '', 'debug("readdir:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__readdir", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__readdir');
 rename_function('rewinddir', '__alias__rewinddir');
-override_function('rewinddir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('rewinddir', '', 'debug("rewinddir:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__rewinddir", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__rewinddir');
 rename_function('closedir', '__alias__closedir');
-override_function('closedir', '', 'debug(__FUNCTION__.":".print_r(s3_func_get_args(), true); return call_user_func_array("__alias__".__FUNCTION__, s3_func_get_args());');
+override_function('closedir', '', 'debug("closedir:".print_r(s3_func_get_args(func_get_args()), true)); return call_user_func_array("__alias__closedir", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__closedir');
-
 
 // Get event data and context object
 $event = json_decode($argv[1], true) ?: [];
@@ -128,6 +130,7 @@ debug('COOKIE: ' . print_r($_COOKIE, true));
 function buffer($buffer) {
     global $_RESPONSE;
     global $event;
+    global $s3Client;
 
     // we need to fix references to load-scripts.php and load-styles.php, since they split the 
     // comma separated styles/scripts into multiple 'load[]' query parameters and only the last 
@@ -137,9 +140,7 @@ function buffer($buffer) {
 
     // allow bypassing of cacher for success responses, in case we want to do an initial crawl or specifically hit origin
     if ($event['httpMethod'] == 'GET' && !isset($event['headers']['X-Bypass-Cache']) && intval($_RESPONSE['statusCode']) > 200 && intval($_RESPONSE['statusCode']) < 300) {
-        $s3Client = new \Aws\S3\S3Client();
-        $s3Client->registerStreamWrapper();
-
+        debug('Checking if s3 buckets exist');
         if (!is_dir('s3://' . PRESSLESS_S3_LOGGING_BUCKET)) {
             debug('Creating s3://' . PRESSLESS_S3_LOGGING_BUCKET . ' logging bucket');
             try {
@@ -222,7 +223,7 @@ function buffer($buffer) {
     return json_encode([
         'statusCode' => intval($_RESPONSE['statusCode']) ?: 200,
         'body' => $buffer,
-        'headers' => $_RESPONSE['headers'] ?: array()
+        'headers' => $_RESPONSE['headers'] ? $_RESPONSE['headers'] : array()
     ]);
 }
 
@@ -232,7 +233,7 @@ function shutdown() {
         // since this function will be called for every request, 
         // we don't want to print errors for E_NOTICE/E_WARNING
         if ($error['type'] == E_NOTICE || $error['type'] == E_WARNING) return;
-        fwrite(fopen('php://stderr', 'w'), 'php error: ' . json_encode($error));
+        fwrite(STDERR, 'php error: ' . json_encode($error));
     }
 }
 register_shutdown_function('shutdown');
