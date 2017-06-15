@@ -87,6 +87,7 @@ PRESSLESS_S3_LOGGING_BUCKET=${loggingBucket}`;
   "name": "${name}",
   "dependencies": {
     "binary-case": "^1.1.3",
+    "dotenv": "^4.0.0",
     "serverless": "^1.0.0",
     "serverless-domain-manager": "^1.1.0"
   }
