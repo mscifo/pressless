@@ -22,7 +22,15 @@ module.exports.handle = (event, context, callback) => {
 
   // Launch PHP
   var args = ['handler.php', JSON.stringify(event), JSON.stringify(contextData)];
-  var options = {'stdio': ['pipe', 'pipe', 'pipe', 'pipe']};
+  var options = {
+    stdio: ['pipe', 'pipe', 'pipe', 'pipe'], 
+    env: {
+      USE_ZEND_ALLOC: '0', 
+      AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID, 
+      AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY, 
+      AWS_SESSION_TOKEN: process.env.AWS_SESSION_TOKEN
+    }
+  };
   var proc = child_process.spawn(php, args, options);
 
   // Request for remaining time from context
