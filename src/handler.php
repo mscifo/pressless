@@ -55,7 +55,7 @@ $_RESPONSE = array('statusCode' => 200, 'body' => '', 'headers' => array());
 $_COOKIECOUNT = 0;
 
 // import pressless environment variables
-if (!get_env('PRESSLESS_S3_WEBSITE_BUCKET') || !get_env('PRESSLESS_S3_LOGGING_BUCKET')) {
+if (!getenv('PRESSLESS_S3_WEBSITE_BUCKET') || !getenv('PRESSLESS_S3_LOGGING_BUCKET')) {
     debug('Missing pressless environment variables');
     trigger_error('Missing pressless environment variables', E_USER_WARNING);
 } else {
