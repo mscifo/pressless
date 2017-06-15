@@ -268,7 +268,7 @@ function buffer($buffer) {
                 return json_encode([
                     'statusCode' => 301,
                     'body' => '',
-                    'headers' => array('Location: http://' . PRESSLESS_S3_WEBSITE_BUCKET . $_SERVER['REQUEST_URI'])
+                    'headers' => array('Location' => 'http://' . PRESSLESS_S3_WEBSITE_BUCKET . $_SERVER['REQUEST_URI'])
                 ]);
             }
         } else {
@@ -340,7 +340,7 @@ try {
         require_once $wpDir . '/index.php';
     }
 } catch (Exception $e) {
-    return render(503, array('Content-Type' => 'text/html'), $e->getMessage() . $e->getTraceAsString());
+    return render(500, array('Content-Type' => 'text/html'), $e->getMessage() . $e->getTraceAsString());
 } finally {
     ob_end_flush();
 }
