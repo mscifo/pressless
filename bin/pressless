@@ -79,6 +79,10 @@ program
     const certificate = options.certificate ? `certificateName: '${options.certificate}'` : '';
     const loggingBucket = 'pressless-logs-' + crypto.randomBytes(Math.ceil(10/2)).toString('hex').slice(0,10);
 
+    const dotenv = `PRESSLESS_DOMAIN=${domain}
+PRESSLESS_S3_WEBSITE_BUCKET=${website_bucket}
+PRESSLESS_S3_LOGGING_BUCKET=${loggingBucket}`;
+
     const packageJson = `{
   "name": "${name}",
   "dependencies": {
@@ -94,36 +98,38 @@ provider:
   runtime: nodejs6.10
   iamRoleStatements:
     - Effect: 'Allow'
-        Action:
-          - 's3:ListBucket'
-        Resource:
-          Fn::Join:
-            - ''
-            - - 'arn:aws:s3:::'
-              - Ref: ServerlessDeploymentBucket
+      Action:
+        - 's3:ListBucket'
+      Resource:
+        Fn::Join:
+          - ''
+          - - 'arn:aws:s3:::'
+            - Ref: ServerlessDeploymentBucket
     - Effect: 'Allow'
-        Action:
-          - 's3:CreateBucket'
-        Resource:
-          - 'arn:aws:s3:::*'
+      Action:
+        - 's3:CreateBucket'
+      Resource:
+        - 'arn:aws:s3:::*'
     - Effect: 'Allow'
-        Action:
-          - 's3:*'
-        Resource:
-          - 'arn:aws:s3:::${loggingBucket}'
-          - 'arn:aws:s3:::${loggingBucket}/*'
-          - 'arn:aws:s3:::${website_bucket}'
-          - 'arn:aws:s3:::${website_bucket}/*'
+      Action:
+        - 's3:*'
+      Resource:
+        - 'arn:aws:s3:::${loggingBucket}'
+        - 'arn:aws:s3:::${loggingBucket}/*'
+        - 'arn:aws:s3:::${website_bucket}'
+        - 'arn:aws:s3:::${website_bucket}/*'
 
 package:
   exclude:
     - '*'
     - '**'
   include:
+    - .env
     - handler.js
     - handler.php
     - aws.phar
     - node_modules/binary-case/**
+    - node_modules/dotenv/**
     - php
     - wordpress/**
     - Evolution.php
@@ -154,6 +160,7 @@ functions:
     timeout: 300`;
 
     fse.mkdirsSync('.pressless');
+    fs.writeFileSync('.pressless/.env', dotenv);
     fs.writeFileSync('.pressless/package.json', packageJson);
     fs.writeFileSync('.pressless/serverless.yml', serverlessYml);
 
@@ -340,16 +347,6 @@ program
                 return (src.indexOf('.pressless') >= 0 || src.indexOf('.htaccess') >= 0 || src.indexOf('wp-') === 0 || src.indexOf('.php') > 0) ? false : true;
             }});  
         }
-
-        console.log('Pressless: Injecting Pressless constants into Wordpress config...');
-        // modify copied wp-config.php
-        // set pressless constants so handler.php knows about them
-        wpConfig = wpConfig.replace('<?php', `<?php
-define('PRESSLESS_DOMAIN', '${domain}');
-define('PRESSLESS_S3_WEBSITE_BUCKET', '${websiteBucket}');
-define('PRESSLESS_S3_LOGGING_BUCKET', '${loggingBucket}');
-`);
-        fs.writeFileSync('.pressless/wordpress/wp-config.php', wpConfig);
 
         const pwd = shell.pwd().toString();
         async.parallel([

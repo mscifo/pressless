@@ -25,11 +25,6 @@ register_shutdown_function('shutdown');
 
 require_once 'aws.phar';
 
-// initialize globals
-$_RENDERABLE = false;
-$_RESPONSE = array('statusCode' => 200, 'body' => '', 'headers' => array());
-$_COOKIECOUNT = 0;
-
 // create helper functions
 function debug($v) { fwrite(STDERR, $v."\n"); }
 function getremainingtime($v) { return fread(fopen('php://fd/3', 'r+'), 64); }
@@ -52,6 +47,21 @@ function obsafe_print_r($var, $level) {
         $output .= $tabs . "[" . $key . "] => " . $value . "\n";
     }
     return $output;
+}
+
+// initialize globals
+$_RENDERABLE = false;
+$_RESPONSE = array('statusCode' => 200, 'body' => '', 'headers' => array());
+$_COOKIECOUNT = 0;
+
+// import pressless environment variables
+if (!get_env('PRESSLESS_S3_WEBSITE_BUCKET') || !get_env('PRESSLESS_S3_LOGGING_BUCKET')) {
+    debug('Missing pressless environment variables');
+    trigger_error('Missing pressless environment variables', E_USER_WARNING);
+} else {
+    define('PRESSLESS_S3_WEBSITE_BUCKET', getenv('PRESSLESS_S3_WEBSITE_BUCKET'));
+    define('PRESSLESS_S3_LOGGING_BUCKET', getenv('PRESSLESS_S3_LOGGING_BUCKET'));
+    define('PRESSLESS_DOMAIN', getenv('PRESSLESS_DOMAIN'));
 }
 
 // override header function so we can catch/process headers, instead of wordpress outputting them directly (and then possibly exiting)

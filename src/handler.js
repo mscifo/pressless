@@ -1,5 +1,6 @@
 'use strict';
 
+require('dotenv').config();
 var binary_case = require('binary-case');
 var child_process = require('child_process');
 
@@ -28,7 +29,10 @@ module.exports.handle = (event, context, callback) => {
       USE_ZEND_ALLOC: '0', 
       AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID, 
       AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY, 
-      AWS_SESSION_TOKEN: process.env.AWS_SESSION_TOKEN
+      AWS_SESSION_TOKEN: process.env.AWS_SESSION_TOKEN,
+      PRESSLESS_DOMAIN: process.env.PRESSLESS_DOMAIN,
+      PRESSLESS_S3_WEBSITE_BUCKET: process.env.PRESSLESS_S3_WEBSITE_BUCKET,
+      PRESSLESS_S3_LOGGING_BUCKET: process.env.PRESSLESS_S3_LOGGING_BUCKET
     }
   };
   var proc = child_process.spawn(php, args, options);
