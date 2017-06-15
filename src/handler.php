@@ -209,7 +209,7 @@ function buffer($buffer) {
         if (!is_dir('s3://' . PRESSLESS_S3_WEBSITE_BUCKET)) {
             debug('Creating s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' bucket');
             try {
-                $result = $s3Client->createBucket(['ACL' => 'public', 'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET]);
+                $result = $s3Client->createBucket(['ACL' => 'public-read', 'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET]);
                 $result = $client->putBucketWebsite([
                     'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
                     'WebsiteConfiguration' => [
