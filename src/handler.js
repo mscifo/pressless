@@ -43,25 +43,29 @@ module.exports.handle = (event, context, callback) => {
 
   // PHP script execution end
   proc.on('close', function(code) {
-    if (code !== 0) {
+    if (code !== 0 && code !== null) {
+      console.log('handler.js code=' + code + ': response:', response);
       try {
+        // sometimes we get a bad exit code but a valid response
         var result = JSON.parse(response);
+        if (parseInt(result.statusCode) == 200 && result.body) return result;  
+
         return callback(null, {
             statusCode: 500,
             body: result['body'] || response,
-            headers: {'Content-Type': 'text/html'}
+            headers: {'Content-Type': 'text/html', 'X-Exit-Code': code}
         });
       } catch (e) {
-        callback(null, {
+        return callback(null, {
             statusCode: 500,
             body: response,
-            headers: {'Content-Type': 'text/html', 'X-Error': JSON.stringify(e)}
+            headers: {'Content-Type': 'text/html', 'X-Exit-Code': code, 'X-Error': JSON.stringify(e)}
         });
       }
     }
 
     try {
-      console.log('handler.js: response:', response)
+      console.log('handler.js: response:', response);
 
       var result = response == '' ? '{}' : JSON.parse(response);
 

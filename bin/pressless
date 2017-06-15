@@ -12,6 +12,7 @@
 
 const asciify = require('asciify');
 const async = require('async');
+const crypto = require('crypto');
 const DSNParser = require('dsn-parser');
 const exec = require('child_process').exec;
 const fs = require('fs');
@@ -66,7 +67,7 @@ program
   .option("-c, --certificate <certificate>", "AWS ACM certificate name to use")
   .option("-r, --region <region>", "Region to use")
   .option("-v, --verbose", "Show events as they occur")
-  .action(function(domain, options) {
+  .action(function(domain, website_bucket, options) {
     // look for wp-config.php
     if (!fs.existsSync('wp-config.php')) {
         return console.log('Pressless: Unable to find a valid Wordpress installation.  Please run pressless inside your Wordpress directory.');
@@ -76,7 +77,7 @@ program
     website_bucket = website_bucket.toLowerCase();
     const name = domain.replace(/[\.\_\']/g, '-').substring(0, domain.length - (options.env||'dev').length - (options.region||'us-east-1').length - '---lambdaRole'.length);  // created iam role must be <= 64 chars
     const certificate = options.certificate ? `certificateName: '${options.certificate}'` : '';
-    const loggingBucket = 'pressless-logs-' + bin2hex(openssl_random_pseudo_bytes(10));
+    const loggingBucket = 'pressless-logs-' + crypto.randomBytes(Math.ceil(10/2)).toString('hex').slice(0,10);
 
     const packageJson = `{
   "name": "${name}",
@@ -91,6 +92,28 @@ program
 provider:
   name: aws
   runtime: nodejs6.10
+  iamRoleStatements:
+    - Effect: 'Allow'
+        Action:
+          - 's3:ListBucket'
+        Resource:
+          Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: ServerlessDeploymentBucket
+    - Effect: 'Allow'
+        Action:
+          - 's3:CreateBucket'
+        Resource:
+          - 'arn:aws:s3:::*'
+    - Effect: 'Allow'
+        Action:
+          - 's3:*'
+        Resource:
+          - 'arn:aws:s3:::${loggingBucket}'
+          - 'arn:aws:s3:::${loggingBucket}/*'
+          - 'arn:aws:s3:::${website_bucket}'
+          - 'arn:aws:s3:::${website_bucket}/*'
 
 package:
   exclude:
@@ -318,10 +341,14 @@ program
             }});  
         }
 
-        console.log('Pressless: Modifying wordpress config...');
+        console.log('Pressless: Injecting Pressless constants into Wordpress config...');
         // modify copied wp-config.php
         // set pressless constants so handler.php knows about them
-        wpConfig = wpConfig.replace('<?php', "<?php\ndefine('PRESSLESS_DOMAIN', '" + domain + "');\ndefine('PRESSLESS_S3_WEBSITE_BUCKET', '" + websiteBucket + "');\ndefine('PRESSLESS_S3_LOGGING_BUCKET', '" + loggingBucket + '");\n');
+        wpConfig = wpConfig.replace('<?php', `<?php
+define('PRESSLESS_DOMAIN', '${domain}');
+define('PRESSLESS_S3_WEBSITE_BUCKET', '${websiteBucket}');
+define('PRESSLESS_S3_LOGGING_BUCKET', '${loggingBucket}');
+`);
         fs.writeFileSync('.pressless/wordpress/wp-config.php', wpConfig);
 
         const pwd = shell.pwd().toString();
