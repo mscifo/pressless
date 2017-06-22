@@ -212,7 +212,7 @@ functions:
 
 program
   .command('domain')
-  .description('Setup domain')
+  .description('Create AWS ApiGateway custom domain')
   .action(function(options) {
     if (!fs.existsSync('.pressless/serverless.yml')) {
         return console.log('Pressless: You must first call "pressless setup".');
