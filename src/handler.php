@@ -361,7 +361,7 @@ try {
             debug('serving static file ' . $file); 
             $isBase64 = false;
             $fileType = mime_content_type($file);
-            $fileContents = file_get_contents($file);
+            $fileContents = strpos($file, 'wp-content/uploads/') > 0 ? __alias__file_get_contents($file) : file_get_contents($file); // don't get file contents from s3 if serving uploaded file
 
             // convert binary data to base64
             if (strpos($fileType, 'text/') === false && strpos($fileType, 'application/json') === false && strpos($fileType, 'xml') === false) {
