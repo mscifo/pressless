@@ -235,6 +235,11 @@ function buffer($buffer) {
             debug('Creating s3://' . PRESSLESS_S3_LOGGING_BUCKET . ' logging bucket');
             try {
                 $result = $s3Client->createBucket(['ACL' => 'private', 'Bucket' => PRESSLESS_S3_LOGGING_BUCKET]);
+                $result = $s3Client->putBucketAcl([
+                    'Bucket' => PRESSLESS_S3_LOGGING_BUCKET,
+                    'GrantReadACP' => 'uri=http://acs.amazonaws.com/groups/s3/LogDelivery',
+                    'GrantWrite' => 'uri=http://acs.amazonaws.com/groups/s3/LogDelivery'
+                ]);
             } catch (\Aws\Exception\AwsException $e) {
                debug('Error creating s3://' . PRESSLESS_S3_LOGGING_BUCKET . ' logging bucket: ' . $e->getMessage());
             }
