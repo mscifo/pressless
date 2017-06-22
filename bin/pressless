@@ -24,6 +24,7 @@ const program = require('commander');
 const request = require('request');
 const shell = require('shelljs');
 const tarball = require('tarball-extract');
+const tld = require('tldjs');
 const unzip = require('unzip');
 
 function getDomain() {
@@ -72,8 +73,20 @@ program
         return console.log('Pressless: Unable to find a valid Wordpress installation.  Please run pressless inside your Wordpress directory.');
     }
  
-    domain = domain.toLowerCase();
-    website_bucket = website_bucket.toLowerCase();
+    if (domain.toLowerCase() == website_bucket.toLowerCase()) {
+        return console.log('Pressless: <domain> and <website_bucket> must be different.');
+    }
+ 
+    if (!tld.isValid(domain.toLowerCase())) {
+        return console.log('Pressless: ' + domain + ' is not a valid domain.');
+    }
+
+    if (!tld.isValid(website_bucket.toLowerCase())) {
+        return console.log('Pressless: ' + website_bucket + ' is not a valid domain.');
+    }
+
+    domain = tld.getSubdomain(domain.toLowerCase()).tld.getDomain(domain.toLowerCase());
+    website_bucket = tld.getSubdomain(website_bucket.toLowerCase()).tld.getDomain(website_bucket.toLowerCase());
     const name = domain.replace(/[\.\_\']/g, '-').substring(0, domain.length - (options.env||'dev').length - (options.region||'us-east-1').length - '---lambdaRole'.length);  // created iam role must be <= 64 chars
     const certificate = options.certificate ? `certificateName: '${options.certificate}'` : '';
     const loggingBucket = website_bucket + '-logs';

@@ -44,6 +44,7 @@
     "shelljs": "^0.7.7",
     "tar": "^2.1.1",
     "tarball-extract": "0.0.3",
+    "tldjs": "^1.7.0",
     "unzip": "^0.1.11"
   }
 }
