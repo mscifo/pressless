@@ -74,7 +74,14 @@ rename_function("__overridden__", '__overridden__setcookie');
 // override file functions to force an s3 path for writes since lambda filesystem is readonly
 // @see http://docs.aws.amazon.com/aws-sdk-php/v3/guide/service/s3-stream-wrapper.html
 debug('Initializing s3 client');
-$s3Client = new \Aws\S3\S3Client(['region' => 'us-east-1', 'version' => '2006-03-01']);
+$s3Client = \Aws\S3\S3Client::factory([
+    'region' => 'us-east-1', 
+    'credentials' => [
+        'key'    => getenv('AWS_ACCESS_KEY_ID'),
+        'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+        'token'  => getenv('AWS_SESSION_TOKEN')
+    ]
+]);
 debug('Initializing s3 stream wrapper');
 $s3Client->registerStreamWrapper();
 debug('Overriding standard file functions');
