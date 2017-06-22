@@ -59,7 +59,7 @@ module.exports.handle = (event, context, callback) => {
       try {
         // sometimes we get a bad exit code but a valid response
         var result = JSON.parse(response);
-        if (parseInt(result.statusCode) == 200 && result.body) return result;  
+        if (parseInt(result.statusCode) >= 200 && parseInt(result.statusCode) <= 308) return callback(null, result);  
 
         return callback(null, {
             statusCode: 500,
