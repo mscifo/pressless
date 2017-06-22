@@ -29,7 +29,7 @@ require_once 'aws.phar';
 function debug($v) { fwrite(STDERR, $v."\n"); }
 function getremainingtime($v) { return fread(fopen('php://fd/3', 'r+'), 64); }
 function render($code, $headers = array(), $body = '') { global $_RESPONSE; $_RESPONSE['statusCode'] = $code; $_RESPONSE['headers'] = array_merge($headers, $_RESPONSE['headers']); print $body; }
-function obsafe_print_r($var, $level) {  
+function obsafe_print_r($var, $level = 0) {
     $tabs = "\t"; 
     for ($i = 1; $i <= $level; $i++) { $tabs .= "\t"; }
     if (is_array($var)) {
