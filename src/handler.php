@@ -262,9 +262,8 @@ function buffer($buffer) {
                                 ],
                                 'Redirect' => [
                                     'HostName' => PRESSLESS_DOMAIN,
-                                    'HttpRedirectCode' => '302',
-                                    'Protocol' => 'https',
-                                    'ReplaceKeyWith' => ''
+                                    'HttpRedirectCode' => '307',
+                                    'Protocol' => 'https'
                                 ]
                             ]
                         ]
@@ -302,7 +301,7 @@ function buffer($buffer) {
             */
             if ($event['httpMethod'] == 'GET') {
                 return json_encode([
-                    'statusCode' => 301,
+                    'statusCode' => 307,
                     'body' => '',
                     'headers' => array('Location' => 'http://' . PRESSLESS_S3_WEBSITE_BUCKET . $_SERVER['REQUEST_URI'])
                 ]);
