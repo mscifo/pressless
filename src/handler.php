@@ -278,6 +278,19 @@ function buffer($buffer) {
                         ]
                     ]
                 ]);
+                $result = $s3Client->putBucketLifecycleConfiguration([
+                    'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
+                    'LifecycleConfiguration' => [
+                        'Rules' => [
+                            [
+                                'Expiration' => [
+                                    'Days' => 365
+                                ],
+                                'Status' => 'Enabled'
+                            ]
+                        ]
+                    ]
+                ]);
             } catch (\Aws\Exception\AwsException $e) {
                 debug('Error creating s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' bucket: ' . $e->getMessage());
             }
