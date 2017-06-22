@@ -12,6 +12,7 @@
 
 const asciify = require('asciify');
 const async = require('async');
+const aws = require('aws-sdk');
 const DSNParser = require('dsn-parser');
 const exec = require('child_process').exec;
 const fs = require('fs');
@@ -26,6 +27,8 @@ const shell = require('shelljs');
 const tarball = require('tarball-extract');
 const tld = require('tldjs');
 const unzip = require('unzip');
+
+const ServerlessCustomDomain = require(path.join(require.resolve('module'), 'lib/serverless-domain-manager'));
 
 function getDomain() {
     const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
@@ -82,10 +85,13 @@ program
         return console.log('Pressless: ' + website_bucket + ' is not a valid domain.');
     }
 
+    if (!tld.isValid(options.certificate)) {
+        return console.log('Pressless: ' + options.certificate + ' is not a valid certificate name.');
+    }
+
     domain = tld.getSubdomain(domain.toLowerCase()).tld.getDomain(domain.toLowerCase());
     website_bucket = tld.getSubdomain(website_bucket.toLowerCase()).tld.getDomain(website_bucket.toLowerCase());
     const name = domain.replace(/[\.\_\']/g, '-').substring(0, domain.length - (options.env||'dev').length - (options.region||'us-east-1').length - '---lambdaRole'.length);  // created iam role must be <= 64 chars
-    const certificate = options.certificate ? `certificateName: '${options.certificate}'` : '';
     const loggingBucket = website_bucket + '-logs';
 
     const dotenv = `PRESSLESS_DOMAIN=${domain}
@@ -158,7 +164,7 @@ custom:
     basePath:
     domainName: ${domain}
     stage: dev
-    ${certificate}
+    certificateName: '${options.certificate}'
 
 functions:
   ${name}:
@@ -169,6 +175,30 @@ functions:
       - http: ANY {proxy+}
     timeout: 300`;
 
+    // check for existance of ACM certificate, otherwise request one
+    const slsDomainManager = new ServerlessCustomDomain({service: {custom: {customDomain: {domainName: domain, certificateName: options.certificate}}}});
+    try {
+        slsDomainManager.getCertArn()
+    } catch (e) {
+        console.log('Pressless: certificate ' + options.certificate + ' does not exist, requesting...');
+
+        var params = {
+            DomainName: options.certificate,
+            DomainValidationOptions: [
+                {
+                DomainName: options.certificate,
+                ValidationDomain: tld.getDomain(options.certificate)
+                }
+            ],
+            IdempotencyToken: options.certificate,
+
+        };
+        new aws.ACM({region: 'us-east-1'}).requestCertificate(params, function(err, data) {
+            if (err) console.log('Pressless: Error requesting certificate for ' + options.certificate + ': ', err);
+            else console.log('Pressless: a validation email has been sent to the administrators of ' + tld.getDomain(options.certificate) + ' for approval.  Once approved, the certificate will be issued.');
+        });
+    }
+
     fse.mkdirsSync('.pressless');
     fs.writeFileSync('.pressless/.env', dotenv);
     fs.writeFileSync('.pressless/package.json', packageJson);
@@ -178,42 +208,6 @@ functions:
     var npmInstall = shell.exec('npm install', {silent: true}).stdout;
     fse.copySync(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager.js'), 'node_modules/serverless-domain-manager/index.js');
     console.log('Pressless: Setup complete.');
-}); 
-
-program
-  .command('tls')
-  .description('Setup TLS')
-  .option("-e, --email <email>", "LetsEncrypt account email")
-  .option("-d, --domains <domains>", "Comma separated list of domains to get certificates for")
-  .action(function(options) {
-    if (!fs.existsSync('.pressless/serverless.yml')) {
-        return console.log('Pressless: You must first call "pressless setup".');
-    }
-   
-    if (!options.email) { console.log('--email required'); return false; }
-    if (!options.domains) { console.log('--domains required'); return false; }
-
-    const domain = getDomain();
-
-    console.log('Pressless: Generating TLS certificates for ' + domain + ' with domain names ' + options.domains + '...');
-    var cmd = 'curl -fsL https://dl.eff.org/certbot-auto > ' + os.tmpdir() + '/certbot-auto && chmod a+x ' + os.tmpdir() + '/certbot-auto';
-    shell.exec(cmd, {silent: true});
-    var cmd = os.tmpdir() + '/certbot-auto certonly --no-eff-email --manual --preferred-challenges dns --agree-tos --manual-public-ip-logging-ok -m ' + options.email + ' --cert-name ' + domain + ' -d ' + options.domains + ' && rm ' + os.tmpdir() + '/certbot-auto && aws acm import-certificate --certificate file:///etc/letsencrypt/live/' + domain + '/cert.pem --certificate-chain file:///etc/letsencrypt/live/' + domain + '/chain.pem --private-key file:///etc/letsencrypt/live/' + domain + '/privkey.pem --region us-east-1';
-    console.log('');
-    console.log('Pressless: Execute the following (node & certbot can\'t detect input properly):');
-    console.log('');
-    console.log(cmd);
-    return;
-
-    /*
-    var child = shell.exec('bash --init-file <(echo ' + cmd + ')', {async: true});
-    child.stdout.on('finish', function(data) {
-        console.log('certificates:');
-        fs.unlinkSync(os.tmpdir() + '/certbot-auto');
-        var certs = shell.exec('sudo cat /etc/letsencrypt/live/' + domain + '/fullchain.pem /etc/letsencrypt/live/' + domain + '/privkey.pem').output;
-        console.log(certs);
-    });
-    */    
 }); 
 
 program
