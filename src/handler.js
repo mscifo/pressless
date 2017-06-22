@@ -36,6 +36,12 @@ module.exports.handle = (event, context, callback) => {
   };
   var proc = child_process.spawn(php, args, options);
 
+  // Send POST body to STDIN based if specific content-type
+  if (event.httpMethod == 'POST' && (event.headers['Content-Type'] == 'text/html' || event.headers['Content-Type'] == 'application/xml' || event.headers['Content-Type'] == 'application/json')) {
+    proc.stdin.write(event.body + "\n");
+    proc.stdin.end();
+  }
+
   // Request for remaining time from context
   proc.stdio[3].on('data', function (data) {
     var remaining = context.getRemainingTimeInMillis();
