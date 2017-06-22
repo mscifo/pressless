@@ -321,6 +321,14 @@ function buffer($buffer) {
             }
             */
             if ($event['httpMethod'] == 'GET') {
+                debug('Waiting until s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key . ' exists...');
+                sleep(1);
+                while (!file_exists('s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key)) {
+                    debug('Waiting until s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key . ' exists...');
+                    sleep(1);
+                }
+                
+                debug('Redirecting to http://' . PRESSLESS_S3_WEBSITE_BUCKET . $_SERVER['REQUEST_URI']);
                 return json_encode([
                     'statusCode' => 307,
                     'body' => '',
