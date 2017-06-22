@@ -63,10 +63,7 @@ function getLoggingBucket() {
 program
   .command('setup <domain> <website_bucket>')
   .description('Setup pressless configuration and install dependencies')
-  .option("-e, --env <env>", "Environment to use")
   .option("-c, --certificate <certificate>", "AWS ACM certificate name to use")
-  .option("-r, --region <region>", "Region to use")
-  .option("-v, --verbose", "Show events as they occur")
   .action(function(domain, website_bucket, options) {
     // look for wp-config.php
     if (!fs.existsSync('wp-config.php')) {
@@ -160,7 +157,7 @@ custom:
   customDomain:
     basePath:
     domainName: ${domain}
-    stage: ${options.env||'dev'}
+    stage: dev
     ${certificate}
 
 functions:
@@ -423,7 +420,7 @@ program
             if (isEvolution) fse.moveSync('.pressless/wordpress', '.pressless/web');
 
             shell.cd('.pressless');
-            var child = shell.exec('node_modules/.bin/serverless deploy'
+            var child = shell.exec('SLS_ENV=' + (options.env?options.env:'dev') + ' node_modules/.bin/serverless deploy'
                 + (options.env?' --stage '+options.env:'')
                 + (options.region?' --region '+options.region:'')
                 + (options.verbose?' --verbose:':''), {async:true});
