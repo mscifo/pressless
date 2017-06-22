@@ -190,7 +190,7 @@ $event['body'] = preg_match('%^[a-zA-Z0-9/+]*={0,2}$%', $event['body']) ? base64
 if ($event['httpMethod'] == 'POST' && ($event['headers']['Content-Type'] == 'text/xml' || $event['headers']['Content-Type'] == 'application/xml' || $event['headers']['Content-Type'] == 'application/json')) {
     $HTTP_RAW_POST_DATA = $event['body'];
 } else {
-parse_str($event['body'], $_POST);
+    parse_str($event['body'], $_POST);
 }
 $_POST = array_map(function ($v) { return is_numeric($v) ? (int)$v : $v; }, $_POST);
 debug('POST: ' . var_export($_POST, true));
@@ -273,8 +273,7 @@ function buffer($buffer) {
                     'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
                     'BucketLoggingStatus' => [
                         'LoggingEnabled' => [
-                            'TargetBucket' => PRESSLESS_S3_LOGGING_BUCKET,
-                            'TargetPrefix' => PRESSLESS_S3_WEBSITE_BUCKET . date('/Y/m/d/'),
+                            'TargetBucket' => PRESSLESS_S3_LOGGING_BUCKET
                         ]
                     ]
                 ]);
@@ -334,7 +333,7 @@ function buffer($buffer) {
                     'body' => '',
                     'headers' => array('Location' => 'http://' . PRESSLESS_S3_WEBSITE_BUCKET . $_SERVER['REQUEST_URI'])
                 ]);
-            }
+            }           
         }
     }
 
@@ -395,7 +394,7 @@ try {
         require_once $wpDir . $event['path'];
     } else if ($event['path'] != '/' && is_dir($wpDir . $event['path'])) {
         chdir($wpDir . $event['path']);
-        $indexFile = strpos(strrev($event['path']), '/') === 0 ? 'index.php' : '/index.php'; 
+        $indexFile = strpos(strrev($event['path']), '/') === 0 ? 'index.php' : '/index.php';
         debug('specific non static directory requested, loading ' . $wpDir . $event['path'] . $indexFile);
         require_once $indexFile;
     } else if ($event['path'] != '/' && is_dir($wpDir . explode('/', $event['path'])[0])) {
