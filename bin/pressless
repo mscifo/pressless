@@ -290,6 +290,7 @@ program
     const domain = getDomain();
     const websiteBucket = getWebsiteBucket();
     const loggingBucket = getLoggingBucket();
+    const pwd = shell.pwd().toString();
  
     // support for Evolution (https://github.com/evolution/wordpress)
     const wpConfig = fs.readFileSync('wp-config.php').toString();
@@ -324,6 +325,17 @@ program
                 fse.copySync('../lib/ansible/group_vars/all', '.pressless/lib/ansible/group_vars/all');    
             }
 
+            if (fs.existsSync('../composer.json') && !fs.existsSync('../vendor')) {
+                console.log('Pressless: composer.json found, installing missing dependencies...');
+                if (shell.which('php')) {
+                    shell.cd('..');
+                    shell.exec('php -r "echo file_get_contents(\'https://raw.githubusercontent.com/composer/getcomposer.org/master/web/installer\');" | php -- --quiet && php composer.phar install && rm composer.phar');
+                    shell.cd(pwd);
+                } else {
+                    return console.log('Pressless: Unable to install composer dependencies, `php` binary not found');
+                }
+            }
+
             if (fs.existsSync('../vendor')) {
                 fse.copySync('../vendor/', '.pressless/vendor');
             }
@@ -349,7 +361,6 @@ program
             }});  
         }
 
-        const pwd = shell.pwd().toString();
         async.parallel([
             function(callback) {
                 console.log('Pressless: Installing Jetpack plugin...');
