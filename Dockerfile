@@ -9,8 +9,9 @@ RUN yum install \
     autoconf \
     automake \
     libtool \
-    bison \
+    wget \
     git \
+    m4 \
     re2c \
     libxml2-devel \
     openssl-devel \
@@ -18,6 +19,16 @@ RUN yum install \
     libjpeg-devel \
     mysql \
     curl-devel -y
+
+# need this specific version to build php < 5.5
+RUN wget http://ftp.gnu.org/gnu/bison/bison-2.6.4.tar.gz
+RUN tar -xvzf bison-2.6.4.tar.gz
+WORKDIR /bison-2.6.4
+RUN ./configure
+RUN make
+RUN make install
+WORKDIR /
+RUN rm -rf bison-*
 
 RUN curl -sL https://github.com/php/php-src/archive/$PHP_VERSION.tar.gz | tar -zxv
 
@@ -43,10 +54,12 @@ RUN ./configure \
     --enable-simplexml \
     --enable-soap \
     --enable-xml \
+    --enable-xmlwriter \
     --enable-zip \
     --with-curl \
     --with-gd \
     --with-iconv \
+    --with-mysql \
     --with-mysqli \
     --with-pdo-mysql \
     --with-zlib \
