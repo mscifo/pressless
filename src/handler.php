@@ -197,6 +197,13 @@ debug('POST: ' . var_export($_POST, true));
 
 if (!isset($event['headers']['Cookie'])) $event['headers']['Cookie'] = '';
 parse_str(str_replace('; ', '&', $event['headers']['Cookie']), $_COOKIE);
+foreach ($_COOKIE as $k => $v) {
+    // remove wordpress login cookie if request is cacheable since we don't want the wordpress
+    // admin bar included in the cached output
+    if ($cacheable && strpos($k, 'wordpress_logged_in_') === 0) {
+        unset($_COOKIE[$k]);
+    }
+}
 debug('COOKIE: ' . print_r($_COOKIE, true));
 
 // capture all output
