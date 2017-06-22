@@ -394,9 +394,29 @@ try {
         $_SERVER['PHP_SELF'] = $event['path'];
         require_once $wpDir . $event['path'];
     } else if ($event['path'] != '/' && is_dir($wpDir . $event['path'])) {
+        chdir($wpDir . $event['path']);
         $indexFile = strpos(strrev($event['path']), '/') === 0 ? 'index.php' : '/index.php'; 
-        debug('specific non static directory requested, loading wordpress' . $event['path'] . $indexFile);
-        require_once $wpDir . $event['path'] . $indexFile;
+        debug('specific non static directory requested, loading ' . $wpDir . $event['path'] . $indexFile);
+        require_once $indexFile;
+    } else if ($event['path'] != '/' && is_dir($wpDir . explode('/', $event['path'])[0])) {
+        chdir($wpDir);
+        $parts = explode('/', $event['path']);
+        foreach ($parts as $i => $part) {
+            if (is_dir(getcwd() . '/' . $part)) {
+                chdir(getcwd() . '/' . $part);
+                unset($parts[$i]);
+            }
+        }
+        
+        // custom crap :(
+        if (file_exists('route.php')) {
+            debug('specific non static directory with custom route requested, loading ' . getcwd() . '/route.php?uri=' . implode('/', $parts) . '/');
+            $_GET['uri'] = implode('/', $parts) . '/';
+            require_once 'route.php';
+        } else {
+            debug('specific non static directory with extra path requested, loading ' . getcwd() . '/index.php');
+            require_once 'index.php'; 
+        }
     } else {
         debug('full wordpress mode');
         require_once $wpDir . '/index.php';
