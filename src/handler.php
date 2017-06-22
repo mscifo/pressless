@@ -269,7 +269,7 @@ function buffer($buffer) {
                         ]
                     ]
                 ]);
-                $result = $client->putBucketLogging([
+                $result = $s3Client->putBucketLogging([
                     'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
                     'BucketLoggingStatus' => [
                         'LoggingEnabled' => [
