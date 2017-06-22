@@ -291,6 +291,10 @@ program
     const websiteBucket = getWebsiteBucket();
     const loggingBucket = getLoggingBucket();
  
+    // support for Evolution (https://github.com/evolution/wordpress)
+    const wpConfig = fs.readFileSync('wp-config.php').toString();
+    const isEvolution = (wpConfig.indexOf('Evolution.php') > 0 && fs.existsSync('../Evolution.php')) ? true : false;    
+ 
     try { fs.unlinkSync(os.tmpdir() + '/wordpress_latest.tar.gz'); } catch (e) {}
     console.log('Pressless: Downloading latest Wordpress release to ' + os.tmpdir() + '...');
     tarball.extractTarballDownload('https://wordpress.org/latest.tar.gz', os.tmpdir() + '/wordpress_latest.tar.gz', '.pressless', {}, function(err, result) {
@@ -311,11 +315,8 @@ program
         console.log('Pressless: Importing existing Wordpress site...');
 
         // support for Evolution (https://github.com/evolution/wordpress)
-        var wpConfig = fs.readFileSync('wp-config.php').toString();
-        var isEvolution = false;
-        if (wpConfig.indexOf('Evolution.php') > 0 && fs.existsSync('../Evolution.php')) {
+        if (isEvolution) {
             console.log('Pressless: Detected Evolution, including...');
-            isEvolution = true;
 
             fse.copySync('../Evolution.php', '.pressless/Evolution.php');    
             if (fs.existsSync('../lib/ansible/group_vars/all')) {
