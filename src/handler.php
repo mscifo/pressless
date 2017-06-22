@@ -296,8 +296,16 @@ function buffer($buffer) {
             }
         }
 
-        debug('Writing buffer to s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $event['path']);
-        if (file_put_contents('s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $event['path'], $buffer) > 0) {
+        // append 'index.html' for directories since we obviously can't store buffer as a directory name
+        $s3Key = (strcmp(substr($event['path'], strlen($event['path']) - 1), '/') === 0) ? $event['path'] . 'index.html' : $event['path'];
+
+        debug('Writing buffer to s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key);
+        $stream = fopen('s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key, 'w', false, stream_context_create(['s3' => ['ACL' => 'public-read']]));       
+        $bytesWritten = fwrite($stream, $cacheBuffer);
+        fclose($stream);
+        if ($bytesWritten === false || strlen($cacheBuffer) != $bytesWritten) {
+            debug('Failed writing buffer to s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key . ".  Wrote $bytesWritten of " . strlen($cacheBuffer) . ' bytes.');
+        } else {        
             // should we even be caching POSTs??
             /*
             if ($event['httpMethod'] == 'POST') {
@@ -319,8 +327,6 @@ function buffer($buffer) {
                     'headers' => array('Location' => 'http://' . PRESSLESS_S3_WEBSITE_BUCKET . $_SERVER['REQUEST_URI'])
                 ]);
             }
-        } else {
-            debug('Failed writing buffer to s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $event['path']);
         }
     }
 
