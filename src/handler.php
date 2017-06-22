@@ -70,9 +70,6 @@ rename_function("__overridden__", '__overridden__header');
 // override setcookie function so we can capture the resulting header and modify the Set-Cookie header name to allow for multiple cookies to be set, which we process using binary case iteration in handler.js
 override_function('setcookie', '', 'global $_RESPONSE;global $_COOKIECOUNT;$args = func_get_args();$_RESPONSE["headers"]["X-Set-Cookie-".++$_COOKIECOUNT] = rawurlencode($args[0]) . "=" . rawurlencode($args[1]) . (empty($args[2]) ? "" : "; expires=" . gmdate("D, d-M-Y H:i:s", $args[2]) . " GMT") . (empty($args[3]) ? "" : "; path=" . $args[3]) . (empty($args[4]) ? "" : "; domain=" . $args[4]) . (empty($args[5]) ? "" : "; secure" . $args[5]) . (empty($args[6]) ? "" : "; HttpOnly" . $args[6]); return null;');
 rename_function("__overridden__", '__overridden__setcookie');
-// possibly needed by some older plugins
-override_function('mysql_real_escape_string', '$string', 'return mysqli_real_escape_string($string);');
-rename_function("__overridden__", '__overridden__mysql_real_escape_string');
 
 // override file functions to force an s3 path for writes since lambda filesystem is readonly
 // @see http://docs.aws.amazon.com/aws-sdk-php/v3/guide/service/s3-stream-wrapper.html
