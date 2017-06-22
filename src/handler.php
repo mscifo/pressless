@@ -209,6 +209,7 @@ debug('COOKIE: ' . print_r($_COOKIE, true));
 // capture all output
 function buffer($buffer) {
     global $_RESPONSE;
+    global $cacheable;
     global $event;
     global $s3Client;
 
@@ -219,7 +220,16 @@ function buffer($buffer) {
     if (!empty($newBuffer)) $buffer = $newBuffer;
 
     // allow bypassing of cacher for success responses, in case we want to do an initial crawl or specifically hit origin
-    if ($event['httpMethod'] == 'GET' && !isset($event['headers']['X-Bypass-Cache']) && intval($_RESPONSE['statusCode']) >= 200 && intval($_RESPONSE['statusCode']) < 300) {
+    if ($cacheable && intval($_RESPONSE['statusCode']) >= 200 && intval($_RESPONSE['statusCode']) < 300) {
+        if (isset($_RESPONSE['headers']['X-Binary']) && $_RESPONSE['headers']['X-Binary'] == 'true') {
+            // decode binary before writing to cache since it was base64 encoded for ApiGateway support
+            debug('base64 decode binary file ' . $event['path']);
+            $cacheBuffer = base64_decode($buffer);
+        } else {
+            // change pressless domain to website bucket domain so links in cached buffer use domain of cache, not origin
+            $cacheBuffer = str_replace(PRESSLESS_DOMAIN, PRESSLESS_S3_WEBSITE_BUCKET, $buffer);
+        }
+ 
         debug('Checking if s3 buckets exist');
         if (!is_dir('s3://' . PRESSLESS_S3_LOGGING_BUCKET)) {
             debug('Creating s3://' . PRESSLESS_S3_LOGGING_BUCKET . ' logging bucket');
