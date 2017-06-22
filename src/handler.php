@@ -403,6 +403,4 @@ try {
     }
 } catch (Exception $e) {
     return render(500, array('Content-Type' => 'text/html'), $e->getMessage() . $e->getTraceAsString());
-} finally {
-    ob_end_flush();
 }
