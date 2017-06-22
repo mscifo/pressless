@@ -160,6 +160,15 @@ $_SERVER['REQUEST_URI'] = $event['path'] ?: '/';
 $_SERVER['HTTP_X_FORWARDED_FOR'] = $event['headers']['X-Forwarded-For'];
 $_SERVER['HTTP_CLIENT_IP'] = $_SERVER['REMOTE_ADDR'] = $event['requestContext']['identity']['sourceIp'];
 
+// detect cacheability of request
+$cacheable = false;
+if ($event['httpMethod'] == 'GET'
+        && !isset($event['headers']['X-Bypass-Cache'])
+        && substr($event['path'], strlen($event['path']) - 4) !== '.php'  // don't cache php files
+        && strpos($event['path'], '/wp-admin/') === false) {  // don't cache wordpress admin urls
+    $cacheable = true;
+}
+
 // populate $_GET, $_POST, $_COOKIE superglobals
 if (!isset($event['queryStringParameters']) || !is_array($event['queryStringParameters'])) $event['queryStringParameters'] = array();
 foreach ($event['queryStringParameters'] as $k => $v) {
