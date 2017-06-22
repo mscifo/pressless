@@ -252,9 +252,6 @@ function buffer($buffer) {
                 $result = $s3Client->putBucketWebsite([
                     'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
                     'WebsiteConfiguration' => [
-                        'ErrorDocument' => [
-                            'Key' => ''
-                        ],
                         'IndexDocument' => [
                             'Suffix' => 'index.html'
                         ],
