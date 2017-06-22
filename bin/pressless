@@ -1,13 +1,4 @@
 #!/usr/bin/env node
-// @todo: test post payload in handler.php
-// @todo: find a way to get certbot to be interactive, or replace with working js implementation
-// @todo: write a serverless plugin to set x-amazon-apigateway-binary-media-types for binary content types 
-// @todo: finish copydb command to include creating new database before import as well as change password and update db settings in wp-config
-// @todo: modify copydb command to insert sql to activate and setup wp static output plugin
-// @todo: write compile command to run wp static output plugin
-// @todo: write docs
-// @todo: open source?
-
 'use strict';
 
 const asciify = require('asciify');
