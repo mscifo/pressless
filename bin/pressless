@@ -167,7 +167,7 @@ functions:
     timeout: 300`;
 
     // check for existance of ACM certificate, otherwise request one
-    const slsDomainManager = new ServerlessCustomDomain({service: {custom: {customDomain: {domainName: domain, certificateName: options.certificate}}}});
+    const slsDomainManager = new ServerlessCustomDomain({service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: domain, certificateName: options.certificate}}}});
     try {
         slsDomainManager.getCertArn()
     } catch (e) {
