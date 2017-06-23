@@ -97,7 +97,7 @@ program
 
     domain = domain.toLowerCase();
     website_bucket = website_bucket.toLowerCase();
-    const name = domain.replace(/[\.\_\']/g, '-').substring(0, domain.length - (options.env||'_').length - (options.region||'us-east-1').length - '---lambdaRole'.length);  // created iam role must be <= 64 chars
+    const name = domain.replace(/[\.\_\']/g, '-').substring(0, domain.length - (options.region||'us-east-1').length - '----lambdaRole'.length);  // created iam role must be <= 64 chars
     const loggingBucket = website_bucket + '-logs';
 
     const dotenv = `PRESSLESS_DOMAIN=${domain}
@@ -320,7 +320,7 @@ program
 program
   .command('deploy')
   .description('Deploy Wordpress via Serverless')
-  .option("-e, --env <env>", "Environment to use (defaults to '_')")
+  .option("-e, --env <env>", "Environment to use (defaults to 'O')")
   .option("-r, --region <region>", "Region to use (defaults to 'us-east-1')")
   .option("-v, --verbose", "Show events as they occur")
   .action(function(options) {
@@ -333,7 +333,12 @@ program
     const loggingBucket = getLoggingBucket();
     const pwd = shell.pwd().toString();
     const region = options.region || 'us-east-1';
- 
+    const stage = options.env || 'O';  // default stage must be a string since serverless will upcase it
+
+    if (!stage || stage == '_' || !/^[A-Za-z0-9]+$/.test(stage) || /^\d+$/.test(stage)) {
+        return console.log('Pressless: Environemnt "' + stage + '" is not valid.  Only allows "a-zA-Z0-9_", must be a string (not only numbers) and must not be "_".');
+    }
+
     // support for Evolution (https://github.com/evolution/wordpress)
     const wpConfig = fs.readFileSync('wp-config.php').toString();
     const isEvolution = (wpConfig.indexOf('Evolution.php') > 0 && fs.existsSync('../Evolution.php')) ? true : false;    
@@ -453,7 +458,7 @@ program
 
             shell.cd('.pressless');
             var child = shell.exec('node_modules/.bin/serverless deploy'
-                + (options.env?' --stage '+options.env:'_')
+                + ' --stage '+stage
                 + ' --region '+region
                 + (options.verbose?' --verbose:':''), {async:true});
             child.stdout.on('finish', function(data) {        
