@@ -219,17 +219,17 @@ functions:
 
     console.log(`Pressless: Creating custom AWS ApiGateway domain: ${domain}...`);
     slsDomainManager.getDomain().then((data) => {
-            console.log('Pressless: Custom AWS ApiGateway domain already exists.');          
+        console.log('Pressless: Custom AWS ApiGateway domain already exists.');
         console.log('Pressless: Setup complete.');
     })
     .catch((err) => {
         slsDomainManager.createDomain().then(() => {
-        console.log('Pressless: Setup complete.');
+            console.log('Pressless: Setup complete.');
         })
         .catch((err) => {
             console.log('Pressless: ', err);
-    });    
-}); 
+        });
+    });
 }); 
 
 program
@@ -245,14 +245,14 @@ program
     const slsDomainManager = new ServerlessCustomDomain({cli: {log: console.log}, providers: awsProvider, service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: getDomain()}}}});
     slsDomainManager.initializeVariables();
     slsDomainManager.getDomain().then((data) => {
-            console.log('Pressless: Custom AWS ApiGateway domain already exists.');  
+        console.log('Pressless: Custom AWS ApiGateway domain already exists.');
     })
     .catch((err) => {
         slsDomainManager.createDomain().then(() => {
             console.log('Pressless: Domain successfully created.');
-    })
-    .catch((err) => {
-        console.log('Pressless: ', err);
+        })
+        .catch((err) => {
+            console.log('Pressless: ', err);
         });
     });
 }); 
@@ -455,8 +455,7 @@ program
                 + ' --region '+region
                 + (options.verbose?' --verbose:':''), {async:true});
             child.stdout.on('finish', function(data) {        
-                console.log("\nPressless: You can now visit your new Pressless site at:");
-                console.log("https://" + domain);
+                console.log("\nPressless: Your site URL is https://" + domain);
 
                 const slsDomainManager = new ServerlessCustomDomain({providers: awsProvider, service: {provider: {region: region}, custom: {customDomain: {domainName: domain}}}});
                 slsDomainManager.initializeVariables();
