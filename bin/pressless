@@ -20,6 +20,18 @@ const tld = require('tldjs');
 const unzip = require('unzip');
 
 const ServerlessCustomDomain = require(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager'));
+const awsProvider = {
+    aws: {
+        getCredentials: () => {
+            return {
+                accessKeyId: aws.config.credentials.accessKeyId,
+                secretAccessKey: aws.config.credentials.secretAccessKey,
+                sessionToken: aws.config.credentials.sessionToken,
+                region: aws.config.region || 'us-east-1'
+            };
+        }
+    }
+};
 
 function getDomain() {
     const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
@@ -169,7 +181,8 @@ functions:
     timeout: 300`;
 
     // check for existance of ACM certificate, otherwise request one
-    const slsDomainManager = new ServerlessCustomDomain({service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: domain, certificateName: options.certificate}}}});
+    const slsDomainManager = new ServerlessCustomDomain({providers: awsProvider, service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: domain, certificateName: options.certificate}}}});
+    slsDomainManager.initializeVariables();
     try {
         slsDomainManager.getCertArn()
     } catch (e) {
@@ -227,8 +240,9 @@ program
         return console.log('Pressless: You must first call "pressless setup".');
     }
 
-    const slsDomainManager = new ServerlessCustomDomain({service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: getDomain()}}}});
     console.log('Pressless: Creating custom AWS ApiGateway domain...');
+    const slsDomainManager = new ServerlessCustomDomain({providers: awsProvider, service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: getDomain()}}}});
+    slsDomainManager.initializeVariables();
     slsDomainManager.getDomain().then((data) => {
         if (data && data.domainName) {
             console.log('Pressless: Custom AWS ApiGateway domain already exists.');  
@@ -436,7 +450,7 @@ program
             if (isEvolution) fse.moveSync('.pressless/wordpress', '.pressless/web');
 
             shell.cd('.pressless');
-            var child = shell.exec('SLS_ENV=' + (options.env?options.env:'dev') + ' node_modules/.bin/serverless deploy'
+            var child = shell.exec('node_modules/.bin/serverless deploy'
                 + (options.env?' --stage '+options.env:'')
                 + ' --region '+region
                 + (options.verbose?' --verbose:':''), {async:true});
@@ -444,7 +458,8 @@ program
                 console.log("\nPressless: You can now visit your new Pressless site at:");
                 console.log("https://" + domain);
 
-                const slsDomainManager = new ServerlessCustomDomain({service: {provider: {region: region}, custom: {customDomain: {domainName: domain}}}});
+                const slsDomainManager = new ServerlessCustomDomain({providers: awsProvider, service: {provider: {region: region}, custom: {customDomain: {domainName: domain}}}});
+                slsDomainManager.initializeVariables();
                 slsDomainManager.getDomain().then((data) => {
                     console.log(`You will also need to create the following DNS records
 CNAME ${domain} -> ${data.distributionDomainName}
