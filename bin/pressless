@@ -19,7 +19,7 @@ const tarball = require('tarball-extract');
 const tld = require('tldjs');
 const unzip = require('unzip');
 
-const ServerlessCustomDomain = require(path.join(require.resolve('module'), 'lib/serverless-domain-manager'));
+const ServerlessCustomDomain = require(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager'));
 
 function getDomain() {
     const serverlessYml = fs.readFileSync('.pressless/serverless.yml');
