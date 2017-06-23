@@ -80,7 +80,7 @@ program
         return console.log('Pressless: ' + options.certificate + ' is not a valid certificate name.');
     }
 
-    domain = tld.getSubdomain(domain.toLowerCase()).tld.getDomain(domain.toLowerCase());
+    domain = tld.getSubdomain(domain.toLowerCase()) + tld.getDomain(domain.toLowerCase());
     website_bucket = tld.getSubdomain(website_bucket.toLowerCase()).tld.getDomain(website_bucket.toLowerCase());
     const name = domain.replace(/[\.\_\']/g, '-').substring(0, domain.length - (options.env||'dev').length - (options.region||'us-east-1').length - '---lambdaRole'.length);  // created iam role must be <= 64 chars
     const loggingBucket = website_bucket + '-logs';
