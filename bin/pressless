@@ -80,6 +80,8 @@ program
         return console.log('Pressless: ' + options.certificate + ' is not a valid certificate name.');
     }
 
+    console.log('Pressless: Setting up...');
+
     domain = domain.toLowerCase();
     website_bucket = website_bucket.toLowerCase();
     const name = domain.replace(/[\.\_\']/g, '-').substring(0, domain.length - (options.env||'dev').length - (options.region||'us-east-1').length - '---lambdaRole'.length);  // created iam role must be <= 64 chars
@@ -196,6 +198,8 @@ functions:
     fs.writeFileSync('.pressless/serverless.yml', serverlessYml);
 
     shell.cd('.pressless');
+
+    console.log('Pressless: Installing dependencies...');
     var npmInstall = shell.exec('npm install', {silent: true}).stdout;
     fse.copySync(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager.js'), 'node_modules/serverless-domain-manager/index.js');
     console.log('Pressless: Setup complete.');
