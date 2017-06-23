@@ -290,6 +290,7 @@ program
     const websiteBucket = getWebsiteBucket();
     const loggingBucket = getLoggingBucket();
     const pwd = shell.pwd().toString();
+    const region = options.region || 'us-east-1';
  
     // support for Evolution (https://github.com/evolution/wordpress)
     const wpConfig = fs.readFileSync('wp-config.php').toString();
@@ -411,7 +412,7 @@ program
             shell.cd('.pressless');
             var child = shell.exec('SLS_ENV=' + (options.env?options.env:'dev') + ' node_modules/.bin/serverless deploy'
                 + (options.env?' --stage '+options.env:'')
-                + (options.region?' --region '+options.region:'')
+                + ' --region '+region
                 + (options.verbose?' --verbose:':''), {async:true});
             child.stdout.on('finish', function(data) {
                 console.log("\nPressless: You can now visit your new Pressless site at:");
