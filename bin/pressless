@@ -418,6 +418,15 @@ program
                 console.log("\nPressless: You can now visit your new Pressless site at:");
                 console.log("https://" + domain);
 
+                const slsDomainManager = new ServerlessCustomDomain({service: {provider: {region: region}, custom: {customDomain: {domainName: domain}}}});
+                slsDomainManager.getDomain().then((data) => {
+                    console.log(`You will also need to create the following DNS records
+CNAME ${domain} -> ${data.distributionDomainName}
+CNAME ${website_bucket} -> s3-website-${region}.amazonaws.com
+
+                    `);
+                });
+
                 // cleanup copied files
                 try { fse.removeSync('lib'); } catch (e) {}
                 try { fse.removeSync('vendor'); } catch (e) {}
