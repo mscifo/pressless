@@ -4,6 +4,7 @@
 const asciify = require('asciify');
 const async = require('async');
 const aws = require('aws-sdk');
+const dns = require('dns');
 const DSNParser = require('dsn-parser');
 const exec = require('child_process').exec;
 const fs = require('fs');
@@ -454,18 +455,47 @@ program
                 + (options.env?' --stage '+options.env:'')
                 + ' --region '+region
                 + (options.verbose?' --verbose:':''), {async:true});
-            child.stdout.on('finish', function(data) {
+            child.stdout.on('finish', function(data) {        
                 console.log("\nPressless: You can now visit your new Pressless site at:");
                 console.log("https://" + domain);
 
                 const slsDomainManager = new ServerlessCustomDomain({providers: awsProvider, service: {provider: {region: region}, custom: {customDomain: {domainName: domain}}}});
                 slsDomainManager.initializeVariables();
                 slsDomainManager.getDomain().then((data) => {
-                    console.log(`You will also need to create the following DNS records
-CNAME ${domain} -> ${data.distributionDomainName}
-CNAME ${website_bucket} -> s3-website-${region}.amazonaws.com
+                    console.log("\nPressless: The following DNS records need to be setup:");
+                    dns.resolveCname(domain, (err, addresses) => {
+                        var msg = `CNAME ${domain} -> ${data.distributionDomainName}`;
+                        if (addresses && addresses[0] == data.distributionDomainName) {
+                            console.log(msg + ' (already created)');
+                        } else if (addresses) {
+                            console.log(msg + ' (currently pointing to CNAME ' + addresses[0] + ')');
+                        } else {
+                            dns.resolve4(domain, (err, addresses) => {
+                                if (addresses) {
+                                    console.log(msg + ' (currently pointing to A ' + addresses[0] + ')');
+                                } else {
+                                    console.log(msg);
+                                }
+                            });
+                        }
 
-                    `);
+                        dns.resolveCname(websiteBucket, (err, addresses) => {
+                            var msg = `CNAME ${websiteBucket} -> s3-website-${region}.amazonaws.com`;
+                            if (addresses && addresses[0] == `s3-website-${region}.amazonaws.com`) {
+                                console.log(msg + ' (already created)');
+                            } else if (addresses) {
+                                console.log(msg + ' (currently pointing to CNAME ' + addresses[0] + ')');
+                            } else {
+                                dns.resolve4(websiteBucket, (err, addresses) => {
+                                    if (addresses) {
+                                        console.log(msg + ' (currently pointing to A ' + addresses[0] + ')');
+                                    } else {
+                                        console.log(msg);
+                                    }
+                                });
+                            }
+                        });
+                    });
                 });
 
                 // cleanup copied files
