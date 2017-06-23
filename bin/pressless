@@ -118,6 +118,8 @@ PRESSLESS_S3_LOGGING_BUCKET=${loggingBucket}`;
 provider:
   name: aws
   runtime: nodejs6.10
+  deploymentBucket:
+    name: ${website_bucket}-sls-cfm
   iamRoleStatements:
     - Effect: 'Allow'
       Action:
