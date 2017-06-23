@@ -217,20 +217,19 @@ functions:
     var npmInstall = shell.exec('npm install', {silent: true}).stdout;
     fse.copySync(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager.js'), 'node_modules/serverless-domain-manager/index.js');
 
-    console.log('Pressless: Creating custom AWS ApiGateway domain...');
+    console.log(`Pressless: Creating custom AWS ApiGateway domain: ${domain}...`);
     slsDomainManager.getDomain().then((data) => {
-        if (data && data.domainName) {
             console.log('Pressless: Custom AWS ApiGateway domain already exists.');          
-        } else {
-            shell.exec('node_modules/.bin/serverless --stage ANY create_domain'); 
-        }
+        console.log('Pressless: Setup complete.');
     })
     .catch((err) => {
-        console.log('Pressless: ', err);
-    })
-    .then(() => {
+        slsDomainManager.createDomain().then(() => {
         console.log('Pressless: Setup complete.');
+        })
+        .catch((err) => {
+            console.log('Pressless: ', err);
     });    
+}); 
 }); 
 
 program
@@ -241,21 +240,21 @@ program
         return console.log('Pressless: You must first call "pressless setup".');
     }
 
-    console.log('Pressless: Creating custom AWS ApiGateway domain...');
-    const slsDomainManager = new ServerlessCustomDomain({providers: awsProvider, service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: getDomain()}}}});
+    const domain = getDomain();
+    console.log(`Pressless: Creating custom AWS ApiGateway domain: ${domain}...`);
+    const slsDomainManager = new ServerlessCustomDomain({cli: {log: console.log}, providers: awsProvider, service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: getDomain()}}}});
     slsDomainManager.initializeVariables();
     slsDomainManager.getDomain().then((data) => {
-        if (data && data.domainName) {
             console.log('Pressless: Custom AWS ApiGateway domain already exists.');  
-        } else {
-            shell.cd('.pressless');
-            shell.exec('node_modules/.bin/serverless --stage ANY create_domain');
-            console.log('Pressless: Creation complete.'); 
-        }
+    })
+    .catch((err) => {
+        slsDomainManager.createDomain().then(() => {
+            console.log('Pressless: Domain successfully created.');
     })
     .catch((err) => {
         console.log('Pressless: ', err);
-    })
+        });
+    });
 }); 
 
 program
