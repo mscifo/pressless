@@ -202,7 +202,21 @@ functions:
     console.log('Pressless: Installing dependencies...');
     var npmInstall = shell.exec('npm install', {silent: true}).stdout;
     fse.copySync(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager.js'), 'node_modules/serverless-domain-manager/index.js');
-    console.log('Pressless: Setup complete.');
+
+    console.log('Pressless: Creating custom AWS ApiGateway domain...');
+    slsDomainManager.getDomain().then((data) => {
+        if (data && data.domainName) {
+            console.log('Pressless: Custom AWS ApiGateway domain already exists.');          
+        } else {
+            shell.exec('node_modules/.bin/serverless --stage ANY create_domain'); 
+        }
+    })
+    .catch((err) => {
+        console.log('Pressless: ', err);
+    })
+    .then(() => {
+        console.log('Pressless: Setup complete.');
+    });    
 }); 
 
 program
@@ -212,9 +226,21 @@ program
     if (!fs.existsSync('.pressless/serverless.yml')) {
         return console.log('Pressless: You must first call "pressless setup".');
     }
-   
-    shell.cd('.pressless');
-    shell.exec('node_modules/.bin/serverless create_domain'); 
+
+    const slsDomainManager = new ServerlessCustomDomain({service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: getDomain()}}}});
+    console.log('Pressless: Creating custom AWS ApiGateway domain...');
+    slsDomainManager.getDomain().then((data) => {
+        if (data && data.domainName) {
+            console.log('Pressless: Custom AWS ApiGateway domain already exists.');  
+        } else {
+            shell.cd('.pressless');
+            shell.exec('node_modules/.bin/serverless --stage ANY create_domain');
+            console.log('Pressless: Creation complete.'); 
+        }
+    })
+    .catch((err) => {
+        console.log('Pressless: ', err);
+    })
 }); 
 
 program
