@@ -502,6 +502,24 @@ program
                                     }
                                 });
                             }
+
+                            const alternitveWebsiteBucket = websiteBucket.indexOf('www.') === 0 ? websiteBucket.replace('www.', '') : 'www.' + websiteBucket;
+                            dns.resolveCname(alternitveWebsiteBucket, (err, addresses) => {
+                            var msg = `CNAME ${alternitveWebsiteBucket} -> ${websiteBucket}`;
+                            if (addresses && addresses[0] == `${websiteBucket}`) {
+                                console.log(msg + ' (already created)');
+                            } else if (addresses) {
+                                console.log(msg + ' (currently pointing to CNAME ' + addresses[0] + ')');
+                            } else {
+                                dns.resolve4(alternitveWebsiteBucket, (err, addresses) => {
+                                    if (addresses) {
+                                        console.log(msg + ' (currently pointing to A ' + addresses[0] + ')');
+                                    } else {
+                                        console.log(msg);
+                                    }
+                                });
+                            }
+                        });
                         });
                     });
                 });
