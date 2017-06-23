@@ -166,7 +166,7 @@ custom:
     loggingBucket: ${loggingBucket}
     websiteBucket: ${website_bucket}
   customDomain:
-    basePath:
+    basePath: (none)
     domainName: ${domain}
     stage: \${opt:stage}
     certificateName: '${options.certificate}'
