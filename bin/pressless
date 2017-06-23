@@ -156,7 +156,7 @@ custom:
   customDomain:
     basePath:
     domainName: ${domain}
-    stage: dev
+    stage: \${opt:stage}
     certificateName: '${options.certificate}'
 
 functions:
