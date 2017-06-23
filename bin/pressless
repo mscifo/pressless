@@ -219,6 +219,12 @@ functions:
     var npmInstall = shell.exec('npm install', {silent: true}).stdout;
     fse.copySync(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager.js'), 'node_modules/serverless-domain-manager/index.js');
 
+    console.log(`Pressless: Creating s3 bucket for serverless deployment: ${website_bucket}-sls-cfm...`);
+    new aws.S3().createBucket({Bucket: `${website_bucket}-sls-cfm`}).promise().catch((err) => {
+        console.log('Pressless: Unable to create s3 bucket for serverless deployment:', err);
+        process.exit(1);
+    });
+
     console.log(`Pressless: Creating custom AWS ApiGateway domain: ${domain}...`);
     slsDomainManager.getDomain().then((data) => {
         console.log('Pressless: Custom AWS ApiGateway domain already exists.');
