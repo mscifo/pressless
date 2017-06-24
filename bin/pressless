@@ -110,7 +110,8 @@ PRESSLESS_S3_LOGGING_BUCKET=${loggingBucket}`;
     "binary-case": "^1.1.3",
     "dotenv": "^4.0.0",
     "serverless": "^1.0.0",
-    "serverless-domain-manager": "^1.1.0"
+    "serverless-domain-manager": "^1.1.0",
+    "serverless-apigw-binary": "^0.3.4"
   }
 }`;
 
@@ -160,6 +161,7 @@ package:
 
 plugins:
   - serverless-domain-manager
+  - serverless-apigw-binary
 
 custom:
   pressless:
@@ -170,6 +172,33 @@ custom:
     domainName: ${domain}
     stage: \${opt:stage}
     certificateName: '${options.certificate}'
+  apigwBinary:
+    types: # max 25 allowed
+      - 'application/octet-stream'
+      - 'application/pdf'
+      - 'application/x-7z-compressed'
+      - 'application/x-bzip'
+      - 'application/x-bzip2'
+      - 'application/x-rar-compressed'
+      - 'application/x-tar'
+      - 'application/zip'
+      - 'audio/aac'
+      - 'audio/ogg'
+      - 'audio/webm'
+      - 'audio/x-wav'
+      - 'font/ttf'
+      - 'font/woff'
+      - 'font/woff2'
+      - 'image/gif'
+      - 'image/jpeg'
+      - 'image/png'
+      - 'image/svg+xml'
+      - 'image/tiff'
+      - 'image/webp'
+      - 'image/*'
+      - 'video/mpeg'
+      - 'video/ogg'
+      - 'video/webm' 
 
 functions:
   ${name}:
