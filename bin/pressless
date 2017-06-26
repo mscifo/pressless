@@ -352,10 +352,10 @@ program
             console.log('Pressless: Database successfully copied.')
 
             // update wp-config entries
-            wpConfig = wpConfig.toString().replace(/define\('DB_NAME', '(.*?)'/, "define('DB_NAME', '$1'");
-            wpConfig = wpConfig.toString().replace(/define\('DB_USER', '(.*?)'/, "define('DB_USER', '$1'");
-            wpConfig = wpConfig.toString().replace(/define\('DB_PASSWORD', '(.*?)'/, "define('DB_PASSWORD', '$1'");
-            wpConfig = wpConfig.toString().replace(/define\('DB_HOST', '(.*?)'/, "define('DB_HOST', '$1'");
+            wpConfig = wpConfig.toString().replace(/define\('DB_NAME', '(.*?)'/, "define('DB_NAME', '" + dsn.get('database') + "'");
+            wpConfig = wpConfig.toString().replace(/define\('DB_USER', '(.*?)'/, "define('DB_USER', '" + dsn.get('user') + "'");
+            wpConfig = wpConfig.toString().replace(/define\('DB_PASSWORD', '(.*?)'/, "define('DB_PASSWORD', '" + dsn.get('password') + "'");
+            wpConfig = wpConfig.toString().replace(/define\('DB_HOST', '(.*?)'/, "define('DB_HOST', '" + dsn.get('host') + "'");
             fs.writeFileSync('wp-config.php.migration', wpConfig);
             console.log('Pressless: Database migration complete.');
             console.log('Pressless: You may need to permanantly update your wp-config.php file with the new database config, otherwise the changes won\'t persist between deploys.');
