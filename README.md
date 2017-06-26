@@ -6,7 +6,15 @@
 
 A tool that migrates an existing Wordpress site into a fully functioning Serverless site, powered by AWS (Cloudfront, API Gateway, Lambda, S3).
 
-**Latest version is on [master][git-repo]**.
+Pressless will:
+- Create an AWS API Gateway custom domain and assign the specified AWS ACM certificate (via the `domain` command)
+- Create a CNAME record in Route53 for the Cloudfront distribution of the new API Gateway custom domain
+- Provide you with any other DNS records that need to be created/modified manually
+- Copy your existing Wordpress database into a new database (via the `copydb` command)
+- Package your existing Wordpress site into an AWS Lambda function and setup an AWS API Gateway Lambda Proxy  (via the `deploy` command)
+- Create an AWS S3 website and logging bucket
+- Automatically store any Wordpress uploads to your AWS S3 website bucket
+- Attempt to automatically cache all non-admin GET requests to S3
 
 # Usage
 Install this project:
@@ -35,12 +43,11 @@ pressless
 
   Commands:
 
-    setup [options] <domain>     Setup pressless
-    tls [options]                Setup TLS
-    domain                       Setup domain
-    copydb <dsn>                 Copy database
-    deploy [options]             Deploy Wordpress via Serverless
-    test <stage> <request_path>  Test the Serverless function
+    setup [options] <domain> <website_bucket>  Setup pressless configuration and install dependencies
+    domain                                     Create AWS ApiGateway custom domain
+    copydb <dsn>                               Copy database
+    deploy [options]                           Deploy Wordpress via Serverless
+    test <stage> <request_path>                Test the Serverless function
 
   Options:
 
