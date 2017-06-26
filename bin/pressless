@@ -10,7 +10,6 @@ const exec = require('child_process').exec;
 const fs = require('fs');
 const fse = require('fs-extra');
 const fstream = require('fstream');
-const MysqlTools = require('mysql-tools');
 const os = require('os');
 const path = require('path');
 const program = require('commander');
@@ -19,6 +18,7 @@ const shell = require('shelljs');
 const tarball = require('tarball-extract');
 const tld = require('tldjs');
 const unzip = require('unzip');
+const util = require('util');
 
 const ServerlessCustomDomain = require(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager'));
 const awsProvider = {
@@ -304,9 +304,12 @@ program
         return console.log('Pressless: mysql and mysqldump are required but not found.');
     }
 
-    console.log('Pressless: Copying database...');
     var dsn = new DSNParser(dsn);
-    const domain = getDomain();
+    if (!dsn.get('host') || !dsn.get('user') || !dsn.get('password') || !dsn.get('database')) {
+        return console.log('Pressless: Invalid DSN!');
+    }     
+
+    console.log('Pressless: Dumping database...');
 
     var fromDatabase = {};
     var wpConfig = fs.readFileSync('wp-config.php');
@@ -318,46 +321,45 @@ program
     if (matches && matches[1]) { fromDatabase.password = matches[1]; }
     var matches = wpConfig.toString().match(/define\('DB_HOST', '(.*?)'/);
     if (matches && matches[1]) { fromDatabase.host = matches[1]; }
-    
-    // create database dump sql file
-    var tool = new MysqlTools();
-    var dumpSqlFileName = os.tmpdir() + '/' + domain + new Date().getTime() + '.sql';
-    tool.dumpDatabase({
-        host: fromDatabase.host
-        , user: fromDatabase.user
-        , password: fromDatabase.password
-        , dumpPath: dumpSqlFileName
-        , database: fromDatabase.database
-    }, function (error, output, message, dumpFileName) {
-        if (error instanceof Error) {
-            console.log(error);
-        } else {
-            // restore dump sql file to database
-            var tool = new MysqlTools();
-            tool.restoreDatabase({
-                host: dsn.get('host')
-                , user: dsn.get('user')
-                , password: dsn.get('password')
-                , sqlFilePath: dumpSqlFileName
-                , database: dsn.get('database')
-            }, function (error, output, message) {
-                if (error instanceof Error) {
-                    console.log(error);
-                } else {
-                    console.log(output);
-                    console.log(message);
 
-                    // fix wp-config entries
-                    wpConfig = wpConfig.toString().replace(/define\('DB_NAME', '(.*?)'/, "define('DB_NAME', '$1'");
-                    wpConfig = wpConfig.toString().replace(/define\('DB_USER', '(.*?)'/, "define('DB_USER', '$1'");
-                    wpConfig = wpConfig.toString().replace(/define\('DB_PASSWORD', '(.*?)'/, "define('DB_PASSWORD', '$1'");
-                    wpConfig = wpConfig.toString().replace(/define\('DB_HOST', '(.*?)'/, "define('DB_HOST', '$1'");
-                    fs.writeFileSync('wp-config.php.migration', wpConfig);
-                    console.log('Pressless: Database migration complete.');
-                    console.log('Pressless: You may need to permanantly update your wp-config.php file with the new database config, otherwise the changes won\'t persist between deploys.');
-                }
-            });
+    if (!fromDatabase.host || !fromDatabase.user || !fromDatabase.database) {
+        return console.log('Pressless: Missing database config from wp-config.php!');
+    } 
+
+    const dumpSqlFileName = os.tmpdir() + '/' + getDomain() + new Date().getTime() + '.sql';
+    if (!fs.existsSync(path.dirname(dumpSqlFileName))) {
+        return console.log('Pressless: Database dump path "' + dumpSqlFileName + '" doesn\'t exist!');
+    }
+
+    var dumpCommand = util.format('mysqldump -h %s -u %s -p\'%s\' --databases %s >%s', fromDatabase.host, fromDatabase.user, fromDatabase.password, fromDatabase.database, dumpSqlFileName);
+    shell.exec(dumpCommand, function (code, stdout, stderr) {
+        if (code !== 0) {
+            return console.log('Pressless: Error dumping database!', stderr);
         }
+
+        // modify create database and use database commands and replace with new database
+        shell.sed('-i', '`' + fromDatabase.database + '`', '`' + dsn.get('database') + '`', dumpSqlFileName);
+
+        console.log('Pressless: Restoring database...');
+        var restoreCommand = util.format('mysql -h %s -u %s -p\'%s\' <%s', dsn.get('host'), dsn.get('user'), dsn.get('password'), dumpSqlFileName);
+        shell.exec(restoreCommand, function (code, stdout, stderr) {
+            fs.unlinkSync(dumpSqlFileName);
+
+            if (code !== 0) {
+                return console.log('Pressless: Error copying database!', stderr);
+            }
+
+            console.log('Pressless: Database successfully copied.')
+
+            // update wp-config entries
+            wpConfig = wpConfig.toString().replace(/define\('DB_NAME', '(.*?)'/, "define('DB_NAME', '$1'");
+            wpConfig = wpConfig.toString().replace(/define\('DB_USER', '(.*?)'/, "define('DB_USER', '$1'");
+            wpConfig = wpConfig.toString().replace(/define\('DB_PASSWORD', '(.*?)'/, "define('DB_PASSWORD', '$1'");
+            wpConfig = wpConfig.toString().replace(/define\('DB_HOST', '(.*?)'/, "define('DB_HOST', '$1'");
+            fs.writeFileSync('wp-config.php.migration', wpConfig);
+            console.log('Pressless: Database migration complete.');
+            console.log('Pressless: You may need to permanantly update your wp-config.php file with the new database config, otherwise the changes won\'t persist between deploys.');
+        });
     });
 }); 
 
