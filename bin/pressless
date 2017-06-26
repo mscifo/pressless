@@ -295,16 +295,21 @@ program
   .command('copydb <dsn>')
   .description('Copy database')
   .action(function(dsn, options) {
-    if (!fs.existsSync('.pressless/serverless.yml')) {
-        return console.log('Pressless: You must first call "pressless setup".');
+    // look for wp-config.php
+    if (!fs.existsSync('wp-config.php')) {
+        return console.log('Pressless: Unable to find a valid Wordpress installation.  Please run pressless inside your Wordpress directory.');
     }
 
-    var dsn = new DSNParser(dsn);
+    if (!shell.which('mysql') || !shell.which('mysqldump')) {
+        return console.log('Pressless: mysql and mysqldump are required but not found.');
+    }
 
+    console.log('Pressless: Copying database...');
+    var dsn = new DSNParser(dsn);
     const domain = getDomain();
 
     var fromDatabase = {};
-    const wpConfig = fs.readFileSync('wp-config.php');
+    var wpConfig = fs.readFileSync('wp-config.php');
     var matches = wpConfig.toString().match(/define\('DB_NAME', '(.*?)'/);
     if (matches && matches[1]) { fromDatabase.database = matches[1]; }
     var matches = wpConfig.toString().match(/define\('DB_USER', '(.*?)'/);
@@ -343,6 +348,13 @@ program
                     console.log(message);
 
                     // fix wp-config entries
+                    wpConfig = wpConfig.toString().replace(/define\('DB_NAME', '(.*?)'/, "define('DB_NAME', '$1'");
+                    wpConfig = wpConfig.toString().replace(/define\('DB_USER', '(.*?)'/, "define('DB_USER', '$1'");
+                    wpConfig = wpConfig.toString().replace(/define\('DB_PASSWORD', '(.*?)'/, "define('DB_PASSWORD', '$1'");
+                    wpConfig = wpConfig.toString().replace(/define\('DB_HOST', '(.*?)'/, "define('DB_HOST', '$1'");
+                    fs.writeFileSync('wp-config.php.migration', wpConfig);
+                    console.log('Pressless: Database migration complete.');
+                    console.log('Pressless: You may need to permanantly update your wp-config.php file with the new database config, otherwise the changes won\'t persist between deploys.');
                 }
             });
         }
@@ -438,6 +450,11 @@ program
                 // don't cyclical copy, etc
                 return (src.indexOf('.pressless') >= 0 || src.indexOf('.htaccess') >= 0 || src.indexOf('wp-') === 0 || src.indexOf('.php') > 0) ? false : true;
             }});  
+        }
+
+        // replace wpconfig with copy containing new database settings, from copydb command
+        if (fs.existsSync('wp-config.php.migration')) {
+            fse.copySync('wp-config.php.migration', '.pressless/wordpress/wp-config.php');
         }
 
         async.parallel([
