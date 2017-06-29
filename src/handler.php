@@ -240,7 +240,7 @@ function buffer($buffer) {
                     'GrantReadACP' => 'uri=http://acs.amazonaws.com/groups/s3/LogDelivery',
                     'GrantWrite' => 'uri=http://acs.amazonaws.com/groups/s3/LogDelivery'
                 ]);
-            } catch (\Aws\Exception\AwsException $e) {
+            } catch (Aws\S3\Exception\S3Exception $e) {
                debug('Error creating s3://' . PRESSLESS_S3_LOGGING_BUCKET . ' logging bucket: ' . $e->getMessage());
             }
         }
@@ -249,48 +249,45 @@ function buffer($buffer) {
             debug('Creating s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' bucket');
             try {
                 $result = $s3Client->createBucket(['ACL' => 'public-read', 'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET]);
+                debug('Setting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' website policy');
                 $result = $s3Client->putBucketWebsite([
                     'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
-                    'WebsiteConfiguration' => [
-                        'IndexDocument' => [
-                            'Suffix' => 'index.html'
-                        ],
-                        'RoutingRules' => [
-                            [
-                                'Condition' => [
-                                    'HttpErrorCodeReturnedEquals' => '404'
-                                ],
-                                'Redirect' => [
-                                    'HostName' => PRESSLESS_DOMAIN,
-                                    'HttpRedirectCode' => '307',
-                                    'Protocol' => 'https'
-                                ]
+                    'IndexDocument' => [
+                        'Suffix' => 'index.html'
+                    ],
+                    'RoutingRules' => [
+                        [
+                            'Condition' => [
+                                'HttpErrorCodeReturnedEquals' => '404'
+                            ],
+                            'Redirect' => [
+                                'HostName' => PRESSLESS_DOMAIN,
+                                'HttpRedirectCode' => '307',
+                                'Protocol' => 'https'
                             ]
                         ]
                     ]
                 ]);
+                debug('Setting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' logging policy');
                 $result = $s3Client->putBucketLogging([
                     'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
-                    'BucketLoggingStatus' => [
-                        'LoggingEnabled' => [
-                            'TargetBucket' => PRESSLESS_S3_LOGGING_BUCKET
-                        ]
+                    'LoggingEnabled' => [
+                        'TargetBucket' => PRESSLESS_S3_LOGGING_BUCKET
                     ]
                 ]);
+                debug('Setting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' lifecycle policy');
                 $result = $s3Client->putBucketLifecycleConfiguration([
                     'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
-                    'LifecycleConfiguration' => [
-                        'Rules' => [
-                            [
-                                'Expiration' => [
-                                    'Days' => 365
-                                ],
-                                'Status' => 'Enabled'
-                            ]
+                    'Rules' => [
+                        [
+                            'Expiration' => [
+                                'Days' => 365
+                            ],
+                            'Status' => 'Enabled'
                         ]
                     ]
                 ]);
-            } catch (\Aws\Exception\AwsException $e) {
+            } catch (Aws\S3\Exception\S3Exception $e) {
                 debug('Error creating s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' bucket: ' . $e->getMessage());
             }
         }
