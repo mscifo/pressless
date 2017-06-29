@@ -1,3 +1,13 @@
+# 0.6.4
+
+## Features
+
+* Switch to using a prefix for service name and deployment bucket so we can establish a least privilege IAM policy with permissions needed for pressless to operate.
+
+## Bugs
+
+* Fix for evolution support when using the copydb command and some other minor improvements.
+
 # 0.6.3
 
 ## Bugs
