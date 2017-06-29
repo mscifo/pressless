@@ -1,3 +1,9 @@
+# 0.7.0
+
+## Features
+
+* Support for specifying custom database credentials during setup command which are populated/retrieved via environment variables, and for RDS IAM Authentication so passwords don't have to be specified/included.
+
 # 0.6.4
 
 ## Features

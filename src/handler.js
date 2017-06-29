@@ -1,6 +1,7 @@
 'use strict';
 
 require('dotenv').config();
+var aws = require('aws-sdk');
 var binary_case = require('binary-case');
 var child_process = require('child_process');
 
@@ -21,6 +22,22 @@ module.exports.handle = (event, context, callback) => {
     }
   });
 
+  var rdsPassword = process.env.PRESSLESS_DB_PASSWORD;
+  if (process.env.PRESSLESS_DB_HOST.indexOf('.rds.amazonaws.com') > 0) {
+    // Attempt to get RDS auth token
+    var rdsToken = new aws.RDS.Signer({
+      region: process.env.PRESSLESS_DB_HOST.split('.')[2],
+      username: process.env.PRESSLESS_DB_USER || 'pressless-rds', 
+      hostname: process.env.PRESSLESS_DB_HOST,
+      port: process.env.PRESSLESS_DB_PORT || 3306
+    }).getAuthToken();
+    if (rdsToken) {
+      rdsPassword = rdsToken;      
+    } else {
+      console.log('Unable to retrieve database token', process.env);
+    }
+  }
+  
   // Launch PHP
   var args = ['handler.php', JSON.stringify(event), JSON.stringify(contextData)];
   var options = {
@@ -31,7 +48,11 @@ module.exports.handle = (event, context, callback) => {
       AWS_SESSION_TOKEN: process.env.AWS_SESSION_TOKEN,
       PRESSLESS_DOMAIN: process.env.PRESSLESS_DOMAIN,
       PRESSLESS_S3_WEBSITE_BUCKET: process.env.PRESSLESS_S3_WEBSITE_BUCKET,
-      PRESSLESS_S3_LOGGING_BUCKET: process.env.PRESSLESS_S3_LOGGING_BUCKET
+      PRESSLESS_S3_LOGGING_BUCKET: process.env.PRESSLESS_S3_LOGGING_BUCKET,
+      PRESSLESS_DB_HOST: process.env.PRESSLESS_DB_HOST || null,
+      PRESSLESS_DB_NAME: process.env.PRESSLESS_DB_NAME || null,
+      PRESSLESS_DB_USER: process.env.PRESSLESS_DB_USER || null,
+      PRESSLESS_DB_PASSWORD: rdsPassword || null
     }
   };
   var proc = child_process.spawn(php, args, options);

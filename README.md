@@ -106,6 +106,11 @@ Pressless also requires AWS API credentials that have the following policy grant
 }
 ```
 
+If you wish to utilize [RDS IAM Authentication](http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html) so that you don't have to hard code your database password into `wp-config.php`, you will also need to create an IAM authenticatable user on the RDS instance (`CREATE USER [USERNAME] IDENTIFIED WITH AWSAuthenticationPlugin as 'RDS';`) along with the necessary grants.  Then just specify an SSL connection to MySQL using the newly created user when you run `pressless setup`.  For example:
+```
+pressless setup -c [AWS_ACM_CERTIFICATE] -d 'mysql+ssl://[USERNAME]@[RDS_HOST]/[DATABASE]' [DOMAIN] [S3_WEBSITE_BUCKET]
+```
+
 # Usage
 Install this project:
 ```
