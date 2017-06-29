@@ -1,3 +1,9 @@
+# 0.7.1
+
+## Other
+
+* Updated readme to include one other required permission for the recommended least privilege IAM policy.
+
 # 0.7.0
 
 ## Features

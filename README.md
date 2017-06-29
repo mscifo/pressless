@@ -34,6 +34,7 @@ Pressless also requires AWS API credentials that have the following policy grant
                 "cloudformation:DescribeStackEvents",
                 "cloudformation:DescribeStackResources",
                 "cloudformation:ValidateTemplate",
+                "cloudfront:UpdateDistribution",
                 "logs:DescribeLogGroups",
                 "logs:CreateLogGroup",
                 "s3:CreateBucket"
