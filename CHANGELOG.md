@@ -1,3 +1,13 @@
+# 0.7.2
+
+## Bugs
+
+* Fixed some bad S3 SDK calls which were still using v3 instead of v2.
+
+## Other
+
+* Updated readme to include two other required permissions for the recommended least privilege IAM policy.
+
 # 0.7.1
 
 ## Other
