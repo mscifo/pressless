@@ -16,6 +16,96 @@ Pressless will:
 - Automatically store any Wordpress uploads to your AWS S3 website bucket
 - Attempt to automatically cache all non-admin GET requests to S3
 
+# Requirements
+
+Pressless requires `nodejs-6.x` or higher to run.
+
+Pressless also requires AWS API credentials that have the following policy grant (least privilege):
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "acm:ListCertificates",
+                "cloudformation:CreateStack",
+                "cloudformation:DescribeStacks",
+                "cloudformation:DescribeStackEvents",
+                "cloudformation:DescribeStackResources",
+                "cloudformation:ValidateTemplate",
+                "logs:DescribeLogGroups",
+                "logs:CreateLogGroup",
+                "s3:CreateBucket"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "iam:*",
+            "Resource": "arn:aws:iam::*:role/pl-*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "apigateway:GET",
+                "apigateway:POST",
+                "apigateway:PUT",
+                "apigateway:DELETE"
+            ],
+            "Resource": [
+                "arn:aws:apigateway:*::/domainnames",
+                "arn:aws:apigateway:*::/domainnames/*",
+                "arn:aws:apigateway:*::/domainnames/*/*",
+                "arn:aws:apigateway:*::/restapis",
+                "arn:aws:apigateway:*::/restapis/*",
+                "arn:aws:apigateway:*::/restapis/*/*"
+            ]
+        },      
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lambda:Get*",
+                "lambda:List*",
+                "lambda:CreateFunction"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lambda:AddPermission",
+                "lambda:CreateAlias",
+                "lambda:DeleteFunction",
+                "lambda:InvokeFunction",
+                "lambda:PublishVersion",
+                "lambda:RemovePermission",
+                "lambda:Update*"
+            ],
+            "Resource": "arn:aws:lambda:*:*:function:pl-*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetBucketLocation",
+                "s3:ListBucket",
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": "arn:aws:s3:::pressless-deploys-*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:UpdateStack",
+                "cloudformation:DeleteStack"
+            ],
+            "Resource": "arn:aws:cloudformation:*:*:stack/pl-*"
+        }        
+    ]
+}
+```
+
 # Usage
 Install this project:
 ```

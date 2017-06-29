@@ -115,18 +115,18 @@ PRESSLESS_S3_LOGGING_BUCKET=${loggingBucket}`;
   }
 }`;
 
-    const serverlessYml = `service: ${name}
+    const serverlessYml = `service: pl-${name}
 provider:
   name: aws
   runtime: nodejs6.10
   deploymentBucket:
-    name: ${website_bucket}-deploys
+    name: pressless-deploys-${website_bucket}
   iamRoleStatements:
     - Effect: 'Allow'
       Action:
         - 's3:ListBucket'
       Resource:
-        - 'arn:aws:s3:::${website_bucket}-deploys'
+        - 'arn:aws:s3:::pressless-deploys-${website_bucket}'
     - Effect: 'Allow'
       Action:
         - 's3:CreateBucket'
@@ -245,8 +245,8 @@ functions:
     var npmInstall = shell.exec('npm install', {silent: true}).stdout;
     fse.copySync(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager.js'), 'node_modules/serverless-domain-manager/index.js');
 
-    console.log(`Pressless: Creating s3 bucket for serverless deployment: ${website_bucket}-deploys...`);
-    new aws.S3().createBucket({Bucket: `${website_bucket}-deploys`}).promise().catch((err) => {
+    console.log(`Pressless: Creating s3 bucket for serverless deployment: pressless-deploys-${website_bucket}...`);
+    new aws.S3().createBucket({Bucket: `pressless-deploys-${website_bucket}`}).promise().catch((err) => {
         console.log('Pressless: Unable to create s3 bucket for serverless deployment:', err);
         process.exit(1);
     });
