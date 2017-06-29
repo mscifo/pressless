@@ -333,12 +333,12 @@ program
         return console.log('Pressless: Missing database config from wp-config.php!');
     } 
 
-    const dumpSqlFileName = os.tmpdir() + '/' + getDomain() + new Date().getTime() + '.sql';
+    const dumpSqlFileName = os.tmpdir() + '/pressless' + new Date().getTime() + '.sql';
     if (!fs.existsSync(path.dirname(dumpSqlFileName))) {
         return console.log('Pressless: Database dump path "' + dumpSqlFileName + '" doesn\'t exist!');
     }
 
-    var dumpCommand = util.format('mysqldump -h %s -u %s -p\'%s\' --databases %s >%s', fromDatabase.host, fromDatabase.user, fromDatabase.password, fromDatabase.database, dumpSqlFileName);
+    var dumpCommand = util.format('mysqldump --skip-add-drop-table -h %s -u %s -p\'%s\' --databases %s >%s', fromDatabase.host, fromDatabase.user, fromDatabase.password, fromDatabase.database, dumpSqlFileName);
     shell.exec(dumpCommand, function (code, stdout, stderr) {
         if (code !== 0) {
             return console.log('Pressless: Error dumping database!', stderr);
