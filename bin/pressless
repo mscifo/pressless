@@ -321,6 +321,13 @@ program
     if (matches && matches[1]) { fromDatabase.password = matches[1]; }
     var matches = wpConfig.toString().match(/define\('DB_HOST', '(.*?)'/);
     if (matches && matches[1]) { fromDatabase.host = matches[1]; }
+    var matches = wpConfig.toString().match(/define\('DB_NAME', '(.*?)'/);
+    if (matches && matches[1]) { 
+        fromDatabase.database = matches[1]; 
+    } else {
+        var matches = wpConfig.toString().match(/define\('DB_NAME', Evolution::getDbName\('(.*?)'/);
+        if (matches && matches[1]) { fromDatabase.database = matches[1] + '_production'; }    
+    }
 
     if (!fromDatabase.host || !fromDatabase.user || !fromDatabase.database) {
         return console.log('Pressless: Missing database config from wp-config.php!');
