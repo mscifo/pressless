@@ -3,6 +3,9 @@
 ## Bugs
 
 * Fixed some bad S3 SDK calls which were still using v3 instead of v2.
+* Removed code that handled non-zero exit codes from php process separately, now handled collectively.
+* Rewrite URL's as needed when dealing with uncacheable content.
+* Pass the S3 website bucket domain instead of the actual API Gateway domain to PHP in order to avoid canonical redirects by Wordpress.
 
 ## Other
 

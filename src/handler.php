@@ -153,8 +153,8 @@ $wpDir = file_exists('web') ? 'web' : 'wordpress';
 // populate needed $_SERVER superglobal values
 $_SERVER['SERVER_PROTOCOL'] = 'HTTPS';
 $_SERVER['DOCUMENT_ROOT'] = '/var/task/' . $wpDir; // lambda specific!
-$_SERVER['HTTP_HOST'] = $event['headers']['Host'] ?: 'localhost';
-$_SERVER['SERVER_NAME'] = $event['headers']['Host'] ?: 'localhost';
+$_SERVER['HTTP_HOST'] = PRESSLESS_S3_WEBSITE_BUCKET ?: $event['headers']['Host'];
+$_SERVER['SERVER_NAME'] = PRESSLESS_S3_WEBSITE_BUCKET ?: $event['headers']['Host'];
 $_SERVER['REQUEST_METHOD'] = $event['httpMethod'] ?: 'GET';
 $_SERVER['REQUEST_URI'] = $event['path'] ?: '/';
 $_SERVER['HTTP_X_FORWARDED_FOR'] = $event['headers']['X-Forwarded-For'];

@@ -81,29 +81,8 @@ module.exports.handle = (event, context, callback) => {
 
   // PHP script execution end
   proc.on('close', function(code) {
-    if (code !== 0 && code !== null) {
-      console.log('handler.js code=' + code + ': response:', response);
-      try {
-        // sometimes we get a bad exit code but a valid response
-        var result = JSON.parse(response);
-        if (parseInt(result.statusCode) >= 200 && parseInt(result.statusCode) <= 308) return callback(null, result);  
-
-        return callback(null, {
-            statusCode: 500,
-            body: result['body'] || response,
-            headers: {'Content-Type': 'text/html', 'X-Exit-Code': code}
-        });
-      } catch (e) {
-        return callback(null, {
-            statusCode: 500,
-            body: response,
-            headers: {'Content-Type': 'text/html', 'X-Exit-Code': code, 'X-Error': JSON.stringify(e)}
-        });
-      }
-    }
-
     try {
-      console.log('handler.js: response:', response);
+      //console.log('handler.js: response:', response);
 
       var result = response == '' ? '{}' : JSON.parse(response);
 
@@ -117,6 +96,12 @@ module.exports.handle = (event, context, callback) => {
         // and we don't want browser complaining about unsafe scripts
         var re = 'http://';
         result['body'] = result['body'].replace(new RegExp(re, 'g'), 'https://');
+
+        // if we got this far and the response isn't a redirect to the s3 website bucket,
+        // that means this isn't a cachable page so convert all s3 bucket website links
+        // to pressless domain links in case the Wordpress site domain setting is still 
+        // set to the s3 website bucket
+        result['body'] = result['body'].replace(new RegExp(process.env.PRESSLESS_S3_WEBSITE_BUCKET, 'g'), process.env.PRESSLESS_DOMAIN);
       }
 
       // since ApiGateway can only receive one instance of each header and there may be multiple cookies
@@ -138,10 +123,11 @@ module.exports.handle = (event, context, callback) => {
       //console.log(result);
       callback(null, result);
     } catch (e) {
+      console.log(`handler.js: error=${JSON.stringify(e)} code=${code}, response=${response}`);
       callback(null, {
           statusCode: 500,
-          body: response,
-          headers: {'Content-Type': 'text/html', 'X-Error': JSON.stringify(e)}
+          body: result['body'] || response,
+          headers: {'Content-Type': 'text/html', 'X-Error': JSON.stringify(e), 'X-Exit-Code': code}
       });
     }
   });
