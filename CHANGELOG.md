@@ -1,3 +1,11 @@
+# 0.8.0
+
+## Features
+
+* Added warm command to pre-warm s3 website bucket cache.
+* Added ability to just deploy the lambda function without using cloudformation.
+* Added logs command which wraps serverless logs in order to watch the lambda logs from the cli.
+
 # 0.7.3
 
 ## Features
