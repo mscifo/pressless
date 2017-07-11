@@ -64,6 +64,10 @@ if (!getenv('PRESSLESS_S3_WEBSITE_BUCKET') || !getenv('PRESSLESS_S3_LOGGING_BUCK
     define('PRESSLESS_DOMAIN', getenv('PRESSLESS_DOMAIN'));
 }
 
+
+// disable wordpress plugin/theme installer/editor
+define('DISALLOW_FILE_MODS', true);
+
 // override header function so we can catch/process headers, instead of wordpress outputting them directly (and then possibly exiting)
 override_function('header', '$string', 'global $_RESPONSE;$parts = explode(": ", $string); if (is_array($parts) && count($parts) >= 2) { $_RESPONSE["headers"][$parts[0]] = $parts[1]; } else if (strpos($string, "HTTP/1.0 ") == 0) { $code = explode(" ", $string); if (is_array($code) && count($code) >= 2) { $_RESPONSE["statusCode"] = intval($code[1]); } } return null;');
 rename_function("__overridden__", '__overridden__header');
