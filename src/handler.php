@@ -257,8 +257,8 @@ function buffer($buffer) {
                 if (isset($_GET['s'])) {
                     $event['path'] .= (strcmp(substr($event['path'], strlen($event['path']) - 1), '/') === 0) ? 'search/' . urlencode($_GET['s']) . '/' : '/search/' . urlencode($_GET['s']) . '/';
                     $expires = strtotime('1 day'); // make search results expire faster
-        }
- 
+                }
+
                 // add some javascript to buffer to change form posts to PRESSLESS_DOMAIN as needed, since S3 website can't respond to or redirect POST requests
                 $cacheBuffer .= "<script>for (var i=0;i<document.getElementsByTagName('form').length;i++) {document.getElementsByTagName('form')[i].action = document.getElementsByTagName('form')[i].action.replace('http://".PRESSLESS_S3_WEBSITE_BUCKET."', 'https://".PRESSLESS_DOMAIN."');};</script>";
                 $cacheBuffer .= "<script>try{wpcf7.apiSettings.root = 'https://".PRESSLESS_DOMAIN."/wp-json/';}catch(e){}</script>";
