@@ -347,22 +347,7 @@ function buffer($buffer) {
         fclose($stream);
         if ($bytesWritten === false || strlen($cacheBuffer) != $bytesWritten) {
             debug('Failed writing buffer to s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key . ".  Wrote $bytesWritten of " . strlen($cacheBuffer) . ' bytes.');
-        } else {        
-            // should we even be caching POSTs??
-            /*
-            if ($event['httpMethod'] == 'POST') {
-                $postFields = '';
-                foreach ($_POST as $k=>$v) {
-                    $postFields .= '<input type="hidden" name="'.$k.'" value="'.$v.'"/>';
-                }
-                return json_encode([
-                    'statusCode' => 200,
-                    'body' => '<html><body><form method="POST" action="' . PRESSLESS_S3_WEBSITE_BUCKET . $_SERVER['REQUEST_URI'] . '">'.$postFields.'</form><script>document.forms[0].submit();</script><body></html>',
-                    'headers' => array('Content-Type' => 'text/html')
-                ]);
-            }
-            */
-            if ($event['httpMethod'] == 'GET') {
+        } else if ($event['httpMethod'] == 'GET') {
                 debug('Waiting until s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key . ' exists...');
                 sleep(1);
                 while (!file_exists('s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key)) {
