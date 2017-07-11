@@ -236,6 +236,9 @@ function buffer($buffer) {
 
     // allow bypassing of cacher for success responses, in case we want to do an initial crawl or specifically hit origin
     if ($cacheable && intval($_RESPONSE['statusCode']) >= 200 && intval($_RESPONSE['statusCode']) < 300) {
+        // default expiration for cached files
+        $expires = strtotime('365 days');
+
         if (isset($_RESPONSE['headers']['X-Binary']) && $_RESPONSE['headers']['X-Binary'] == 'true') {
             // decode binary before writing to cache since it was base64 encoded for ApiGateway support
             debug('base64 decode binary file ' . $event['path']);
@@ -261,6 +264,7 @@ function buffer($buffer) {
                 $cacheBuffer .= "<script>try{wpcf7.apiSettings.root = 'https://".PRESSLESS_DOMAIN."/wp-json/';}catch(e){}</script>";
             }
         }
+ 
         if (!is_dir('s3://' . PRESSLESS_S3_LOGGING_BUCKET)) {
             debug('Creating s3://' . PRESSLESS_S3_LOGGING_BUCKET . ' logging bucket');
             try {
@@ -338,7 +342,7 @@ function buffer($buffer) {
         $s3Key = (strcmp(substr($event['path'], strlen($event['path']) - 1), '/') === 0) ? $event['path'] . 'index.html' : $event['path'];
 
         debug('Writing buffer to s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key);
-        $stream = fopen('s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key, 'w', false, stream_context_create(['s3' => ['ACL' => 'public-read']]));       
+        $stream = fopen('s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key, 'w', false, stream_context_create(['s3' => ['ACL' => 'public-read', 'Expires' => $expires]]));       
         $bytesWritten = fwrite($stream, $cacheBuffer);
         fclose($stream);
         if ($bytesWritten === false || strlen($cacheBuffer) != $bytesWritten) {
