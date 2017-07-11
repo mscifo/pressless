@@ -201,12 +201,13 @@ $_SERVER['REQUEST_URI'] .= empty($_GET) ? '' : '?'.http_build_query($_GET);
 
 if (!isset($event['body'])) $event['body'] = '';
 $event['body'] = preg_match('%^[a-zA-Z0-9/+]*={0,2}$%', $event['body']) ? base64_decode($event['body']) : $event['body'];  // detect if post body is base64-encoded, and decode
-if ($event['httpMethod'] == 'POST' && ($event['headers']['Content-Type'] == 'text/xml' || $event['headers']['Content-Type'] == 'application/xml' || $event['headers']['Content-Type'] == 'application/json')) {
-    $HTTP_RAW_POST_DATA = $event['body'];
+if ($event['httpMethod'] == 'POST' && ($event['path'] == '/xmlrpc.php' || $event['headers']['Content-Type'] == 'text/xml' || $event['headers']['Content-Type'] == 'application/xml' || $event['headers']['Content-Type'] == 'application/json' || $event['headers']['Content-Type'] == 'application/x-www-form-urlencoded')) {
+    $HTTP_RAW_POST_DATA = str_replace(["\n", "\r"], '', $event['body']);
 } else {
     parse_str($event['body'], $_POST);
 }
 $_POST = array_map(function ($v) { return is_numeric($v) ? (int)$v : $v; }, $_POST);
+debug('HTTP_RAW_POST_DATA: ' . $HTTP_RAW_POST_DATA);
 debug('POST: ' . var_export($_POST, true));
 
 if (!isset($event['headers']['Cookie'])) $event['headers']['Cookie'] = '';
