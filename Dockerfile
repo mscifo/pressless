@@ -62,6 +62,7 @@ RUN ./configure \
     --with-mysql \
     --with-mysqli \
     --with-pdo-mysql \
+    --with-xmlrpc \
     --with-zlib \
     --with-openssl \
     --without-pear \
