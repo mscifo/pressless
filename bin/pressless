@@ -486,7 +486,7 @@ program
                 console.log('Pressless: Installing Jetpack plugin...');
                 //fs.mkdirSync(path.join(pwd, '.pressless/wordpress/wp-content/plugins/jetpack'));
                 var zipFilePath = path.join(pwd, '.pressless/wordpress/wp-content/plugins', 'jetpack.5.0.zip');
-                request('https://downloads.wordpress.org/plugin/jetpack.5.0.zip')
+                request('https://downloads.wordpress.org/plugin/jetpack.5.1.zip')
                     .on('error', function (err) {
                         console.log('Pressless: requestZip: ', err);
                     })
