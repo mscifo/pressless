@@ -4,6 +4,7 @@
 const asciify = require('asciify');
 const async = require('async');
 const aws = require('aws-sdk');
+const Crawler = require("simplecrawler");
 const dns = require('dns');
 const DSNParser = require('dsn-parser');
 const exec = require('child_process').exec;
@@ -639,6 +640,52 @@ program
 
     shell.cd('.pressless');
     shell.exec('node_modules/.bin/serverless invoke ' + localMode + ' -f ' + functionName + ' -d ' + eventData);
+});
+
+program
+  .command('warm')
+  .description('Warm the S3 website bucket cache by crawling all pages')
+  .action(function(options) {
+    if (!fs.existsSync('.pressless/serverless.yml')) {
+        return console.log('Pressless: You must first call "pressless setup".');
+    }
+
+    console.log("Warming http://" + getWebsiteBucket());
+    var crawler = new Crawler("http://" + getWebsiteBucket());
+    crawler.domainWhitelist = [getDomain(), getWebsiteBucket()];
+    crawler.on("fetchcomplete", function (queueItem, responseBuffer, response) {
+        crawler.queue.countItems({ fetched: true }, function(error, count) {
+            console.log("Processed %d of %d URLs", count, crawler.queue.length);
+        });
+    });
+
+    crawler.on("queueduplicate", function (queueItem, responseBuffer, response) {
+        crawler.queue.filterItems({
+            url: queueItem.url
+        }, function(error, items) {
+            if (!items || items.length == 0) return;
+
+            var item = items.pop();
+            if (item.status == 'redirected' && item.stateData.code == 307) {
+                console.log('Reprocessing ' + queueItem.url + ' since it was redirected');
+                crawler.queueURL(queueItem.url, queueItem.referrer, true);    
+            }
+        });
+    });
+
+    crawler.addFetchCondition(function(queueItem, referrerQueueItem, callback) {
+        callback(null, queueItem.path == queueItem.uriPath && !queueItem.path.match(/%[0-9a-fA-F]+/)); // don't fetch URLs with query string or urlencoded parts
+    });
+
+    crawler.addDownloadCondition(function(queueItem, response, callback) {
+        callback(null,
+            queueItem.stateData.contentType === "text/html"
+            || queueItem.stateData.contentType === "text/css"
+            || queueItem.stateData.contentType === "text/javascript"
+            || queueItem.stateData.contentType === "application/json"
+        );
+    });
+    crawler.start();
 }); 
 
 asciify('pressless', {font: 'larry3d', maxWidth: 75}, function (err, result) {
