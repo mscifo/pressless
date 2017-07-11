@@ -247,9 +247,20 @@ function buffer($buffer) {
             // switch https -> http for website bucket urls in cached buffer, since website bucket doesn't support https
             $cacheBuffer = str_replace('https://' . PRESSLESS_S3_WEBSITE_BUCKET, 'http://' . PRESSLESS_S3_WEBSITE_BUCKET, $cacheBuffer);
 
+            if (strpos($_RESPONSE['headers']['Content-Type'], 'text/html') !== false) {
+                // support for standard wordpress search
+                // since we can't store s3 objects with a '?' in the name without it being url encoded, 
+                // switch to path based search which we can store in s3
+                if (isset($_GET['s'])) {
+                    $event['path'] .= (strcmp(substr($event['path'], strlen($event['path']) - 1), '/') === 0) ? 'search/' . urlencode($_GET['s']) . '/' : '/search/' . urlencode($_GET['s']) . '/';
+                    $expires = strtotime('1 day'); // make search results expire faster
         }
  
-        debug('Checking if s3 buckets exist');
+                // add some javascript to buffer to change form posts to PRESSLESS_DOMAIN as needed, since S3 website can't respond to or redirect POST requests
+                $cacheBuffer .= "<script>for (var i=0;i<document.getElementsByTagName('form').length;i++) {document.getElementsByTagName('form')[i].action = document.getElementsByTagName('form')[i].action.replace('http://".PRESSLESS_S3_WEBSITE_BUCKET."', 'https://".PRESSLESS_DOMAIN."');};</script>";
+                $cacheBuffer .= "<script>try{wpcf7.apiSettings.root = 'https://".PRESSLESS_DOMAIN."/wp-json/';}catch(e){}</script>";
+            }
+        }
         if (!is_dir('s3://' . PRESSLESS_S3_LOGGING_BUCKET)) {
             debug('Creating s3://' . PRESSLESS_S3_LOGGING_BUCKET . ' logging bucket');
             try {
