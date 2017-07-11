@@ -332,17 +332,17 @@ program
 
     var fromDatabase = {};
     var wpConfig = fs.readFileSync('wp-config.php');
-    var matches = wpConfig.toString().match(/define\('DB_USER', '(.*?)'/);
+    var matches = wpConfig.toString().match(/^define\(\s*['"]+DB_USER['"]+, ['"]+(.*?)['"]+/m);
     if (matches && matches[1]) { fromDatabase.user = matches[1]; }
-    var matches = wpConfig.toString().match(/define\('DB_PASSWORD', '(.*?)'/);
+    var matches = wpConfig.toString().match(/^define\(\s*['"]+DB_PASSWORD['"]+, ['"]+(.*?)['"]+/m);
     if (matches && matches[1]) { fromDatabase.password = matches[1]; }
-    var matches = wpConfig.toString().match(/define\('DB_HOST', '(.*?)'/);
+    var matches = wpConfig.toString().match(/^define\(\s*['"]+DB_HOST['"]+, ['"]+(.*?)['"]+/m);
     if (matches && matches[1]) { fromDatabase.host = matches[1]; }    
-    var matches = wpConfig.toString().match(/define\('DB_NAME', '(.*?)'/);
+    var matches = wpConfig.toString().match(/^define\(\s*['"]+DB_NAME['"]+, ['"]+(.*?)['"]+/m);
     if (matches && matches[1]) { 
         fromDatabase.database = matches[1]; 
     } else {
-        var matches = wpConfig.toString().match(/define\('DB_NAME', Evolution::getDbName\('(.*?)'/);
+        var matches = wpConfig.toString().match(/^define\(['"]+DB_NAME['"]+, Evolution::getDbName\(['"]+(.*?)['"]+/m);
         if (matches && matches[1]) { fromDatabase.database = matches[1] + '_production'; }    
     }
 
@@ -473,12 +473,12 @@ program
         } 
 
         // update wpconfig with new database settings
-        if (process.env.PRESSLESS_DB_SSL=='true') wpConfig = wpConfig.replace(/define\(\s*'DB_NAME'/, "define('MYSQL_CLIENT_FLAGS', MYSQL_CLIENT_SSL);\ndefine('DB_NAME'");
-        wpConfig = wpConfig.replace(/define\(\s*'DB_NAME', '(.*?)'/, "define('DB_NAME', getenv('PRESSLESS_DB_NAME')?:'$1'");
-        wpConfig = wpConfig.replace(/define\(\s*'DB_NAME', Evolution::getDbName\('(.*?)'\)/, "define('DB_NAME', getenv('PRESSLESS_DB_NAME')?:'$1'");        
-        wpConfig = wpConfig.replace(/define\(\s*'DB_USER', '(.*?)'/, "define('DB_USER', getenv('PRESSLESS_DB_USER')?:'$1'");
-        wpConfig = wpConfig.replace(/define\(\s*'DB_PASSWORD', '(.*?)'/, "define('DB_PASSWORD', getenv('PRESSLESS_DB_PASSWORD')?:'$1'");
-        wpConfig = wpConfig.replace(/define\(\s*'DB_HOST', '(.*?)'/, "define('DB_HOST', getenv('PRESSLESS_DB_HOST')?:'$1'");
+        if (process.env.PRESSLESS_DB_SSL=='true') wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_NAME['"]+/m, "define('MYSQL_CLIENT_FLAGS', MYSQL_CLIENT_SSL);\ndefine('DB_NAME'");
+        wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_NAME['"]+, ['"]+(.*?)['"]+/m, "define('DB_NAME', getenv('PRESSLESS_DB_NAME')?:'$1'");
+        wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_NAME['"]+, Evolution::getDbName\(['"]+(.*?)['"]+\)/m, "define('DB_NAME', getenv('PRESSLESS_DB_NAME')?:'$1'");        
+        wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_USER['"]+, ['"]+(.*?)['"]+/m, "define('DB_USER', getenv('PRESSLESS_DB_USER')?:'$1'");
+        wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_PASSWORD['"]+, ['"]+(.*?)['"]+/m, "define('DB_PASSWORD', getenv('PRESSLESS_DB_PASSWORD')?:'$1'");
+        wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_HOST['"]+, ['"]+(.*?)['"]+/m, "define('DB_HOST', getenv('PRESSLESS_DB_HOST')?:'$1'");
         fs.writeFileSync('.pressless/wordpress/wp-config.php', wpConfig);
         
         async.parallel([
