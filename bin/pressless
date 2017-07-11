@@ -510,6 +510,27 @@ program
                                 callback(null);
                             });
                     });
+            },
+            function(callback) {
+                console.log('Pressless: Removing login captcha plugins...');
+                try { fse.removeSync('.pressless/wordpress/wp-content/plugins/login-recaptcha'); } catch (e) {}
+                try { fse.removeSync('.pressless/wordpress/wp-content/plugins/wp-login-recaptcha'); } catch (e) {}
+                callback(null);
+            },
+            function(callback) {
+                console.log('Pressless: Injecting custom code...');
+                const customCode = `<?php
+// ensure wp url is the pressless domain                
+function pressless_url() { return 'https://${domain}'; }
+add_filter('pre_option_home', 'pressless_url');
+add_filter('pre_option_siteurl', 'pressless_url');
+// ensure we don't redirect_canonical since in order to avoid a redirect loop
+function pressless_canonical($redirect_url, $requested_url = "") { return false; }
+add_filter('redirect_canonical', 'pressless_canonical');
+`;
+
+                try { fs.writeFileSync('.pressless/wordpress/wp-content/db.php', customCode); } catch (e) {}
+                callback(null);
             }
         ],
         // optional callback
