@@ -355,17 +355,15 @@ function buffer($buffer) {
                     sleep(1);
                 }
                 
-                debug('Redirecting to http://' . PRESSLESS_S3_WEBSITE_BUCKET . $_SERVER['REQUEST_URI']);
+            debug('Redirecting to http://' . PRESSLESS_S3_WEBSITE_BUCKET . $event['path']);
                 return json_encode([
                     'statusCode' => 307,
                     'body' => '',
-                    'headers' => array('Location' => 'http://' . PRESSLESS_S3_WEBSITE_BUCKET . $_SERVER['REQUEST_URI'])
+                'headers' => array('Location' => 'http://' . PRESSLESS_S3_WEBSITE_BUCKET . $event['path'])
                 ]);
-            }           
         }
     }
 
-    debug('Returning buffer');
     return json_encode([
         'statusCode' => intval($_RESPONSE['statusCode']) ?: 200,
         'body' => $buffer,
