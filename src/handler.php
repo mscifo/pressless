@@ -305,6 +305,18 @@ function buffer($buffer) {
                         'TargetBucket' => PRESSLESS_S3_LOGGING_BUCKET
                     ]
                 ]);
+                debug('Setting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' CORS policy');
+                $result = $s3Client->putBucketCors([
+                    'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
+                    'CORSRules' => [
+                        [
+                            'AllowedHeaders' => ['*'],
+                            'AllowedMethods' => ['GET','POST'],
+                            'AllowedOrigins' => ['*'],
+                            'MaxAgeSeconds' => 3000,
+                        ]
+                    ],
+                ]);    
                 debug('Setting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' lifecycle policy');
                 $result = $s3Client->putBucketLifecycleConfiguration([
                     'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
