@@ -243,6 +243,10 @@ function buffer($buffer) {
         } else {
             // change pressless domain to website bucket domain so links in cached buffer use domain of cache, not origin
             $cacheBuffer = str_replace(PRESSLESS_DOMAIN, PRESSLESS_S3_WEBSITE_BUCKET, $buffer);
+
+            // switch https -> http for website bucket urls in cached buffer, since website bucket doesn't support https
+            $cacheBuffer = str_replace('https://' . PRESSLESS_S3_WEBSITE_BUCKET, 'http://' . PRESSLESS_S3_WEBSITE_BUCKET, $cacheBuffer);
+
         }
  
         debug('Checking if s3 buckets exist');
