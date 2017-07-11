@@ -64,6 +64,9 @@ if (!getenv('PRESSLESS_S3_WEBSITE_BUCKET') || !getenv('PRESSLESS_S3_LOGGING_BUCK
     define('PRESSLESS_DOMAIN', getenv('PRESSLESS_DOMAIN'));
 }
 
+// hardcode wordpress URLs
+define('WP_HOME', 'https://'.PRESSLESS_DOMAIN);
+define('WP_SITEURL', 'https://'.PRESSLESS_DOMAIN);
 
 // disable wordpress plugin/theme installer/editor
 define('DISALLOW_FILE_MODS', true);
