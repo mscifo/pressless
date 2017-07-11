@@ -220,7 +220,7 @@ custom:
       - 'video/webm' 
 
 functions:
-  ${name}:
+  f:
     handler: handler.handle
     cors: true
     events:
@@ -381,6 +381,7 @@ program
 program
   .command('deploy')
   .description('Deploy Wordpress via Serverless')
+  .option("-f, --function", "Only deploy lambda function")
   .option("-e, --env <env>", "Environment to use (defaults to 'O')")
   .option("-r, --region <region>", "Region to use (defaults to 'us-east-1')")
   .option("-v, --verbose", "Show events as they occur")
@@ -550,10 +551,12 @@ add_filter('redirect_canonical', 'pressless_canonical');
             if (isEvolution) fse.moveSync('.pressless/wordpress', '.pressless/web');
 
             shell.cd('.pressless');
-            var child = shell.exec('node_modules/.bin/serverless deploy'
+            var deployCommand = 'node_modules/.bin/serverless deploy';
+            if (options.function) deployCommand += ' function -f f';
+            var child = shell.exec(deployCommand
                 + ' --stage '+stage
                 + ' --region '+region
-                + (options.verbose?' --verbose:':''), {async:true});
+                + (options.verbose?' --verbose':''), {async:true});
             child.stdout.on('finish', function(data) {        
                 console.log("\nPressless: Your site URL is https://" + domain);
 
