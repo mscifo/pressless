@@ -14,7 +14,7 @@ function shutdown() {
 
         // if we haven't gotten to a point where output is generated,
         // assume a crash and instead render error
-        if (!$_RENDERABLE) return print(json_encode([
+        if (!$_RENDERABLE || $error['type'] === E_ERROR) return print(json_encode([
             'statusCode' => 500,
             'body' => '<h1>An error occurred!</h1><pre>' . json_encode($error) . '</pre>',
             'headers' => array('Content-Type' => 'text/html')
