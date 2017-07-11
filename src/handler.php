@@ -161,16 +161,6 @@ $context = json_decode($argv[2], true) ?: [];
 $apiMode = $event['pressless_api_only'] ?: false;
 $wpDir = file_exists('web') ? 'web' : 'wordpress';
 
-// populate needed $_SERVER superglobal values
-$_SERVER['SERVER_PROTOCOL'] = 'HTTPS';
-$_SERVER['DOCUMENT_ROOT'] = '/var/task/' . $wpDir; // lambda specific!
-$_SERVER['HTTP_HOST'] = PRESSLESS_S3_WEBSITE_BUCKET ?: $event['headers']['Host'];
-$_SERVER['SERVER_NAME'] = PRESSLESS_S3_WEBSITE_BUCKET ?: $event['headers']['Host'];
-$_SERVER['REQUEST_METHOD'] = $event['httpMethod'] ?: 'GET';
-$_SERVER['REQUEST_URI'] = $event['path'] ?: '/';
-$_SERVER['HTTP_X_FORWARDED_FOR'] = $event['headers']['X-Forwarded-For'];
-$_SERVER['HTTP_CLIENT_IP'] = $_SERVER['REMOTE_ADDR'] = $event['requestContext']['identity']['sourceIp'];
-
 // detect cacheability of request
 $cacheable = false;
 if ($event['httpMethod'] == 'GET'
@@ -179,6 +169,19 @@ if ($event['httpMethod'] == 'GET'
         && strpos($event['path'], '/wp-admin/') === false) {  // don't cache wordpress admin urls
     $cacheable = true;
 }
+
+// populate needed $_SERVER superglobal values
+$_SERVER['DOCUMENT_ROOT'] = '/var/task/' . $wpDir; // lambda specific!
+$_SERVER['SERVER_PROTOCOL'] = $cacheable ? 'HTTP' : 'HTTPS';
+$_SERVER['SERVER_PORT'] = $cacheable ? 80 : 443;
+$_SERVER['HTTPS'] = $cacheable ? null : 'on';
+$_SERVER['HTTP_HOST'] = $cacheable ? PRESSLESS_S3_WEBSITE_BUCKET : PRESSLESS_DOMAIN;
+$_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
+$_SERVER['REQUEST_METHOD'] = $event['httpMethod'] ?: 'GET';
+$_SERVER['REQUEST_URI'] = $event['path'] ?: '/';
+$_SERVER['HTTP_X_FORWARDED_FOR'] = $event['headers']['X-Forwarded-For'];
+$_SERVER['HTTP_CLIENT_IP'] = $_SERVER['REMOTE_ADDR'] = $event['requestContext']['identity']['sourceIp'];
+debug('SERVER: ' . var_export($_SERVER, true));
 
 // populate $_GET, $_POST, $_COOKIE superglobals
 if (!isset($event['queryStringParameters']) || !is_array($event['queryStringParameters'])) $event['queryStringParameters'] = array();
