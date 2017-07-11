@@ -470,15 +470,15 @@ program
                 // don't cyclical copy, etc
                 return (src.indexOf('.pressless') >= 0 || src.indexOf('.htaccess') >= 0 || src.indexOf('wp-') === 0 || src.indexOf('.php') > 0) ? false : true;
             }});  
-        }
+        } 
 
         // update wpconfig with new database settings
-        if (process.env.PRESSLESS_DB_SSL=='true') wpConfig = wpConfig.replace(/define\('DB_NAME'/, "define('MYSQL_CLIENT_FLAGS', MYSQL_CLIENT_SSL);\ndefine('DB_NAME'");
-        wpConfig = wpConfig.replace(/define\('DB_NAME', '(.*?)'/, "define('DB_NAME', getenv('PRESSLESS_DB_NAME')?:'$1'");
-        wpConfig = wpConfig.replace(/define\('DB_NAME', Evolution::getDbName\('(.*?)'\)/, "define('DB_NAME', getenv('PRESSLESS_DB_NAME')?:'$1'");        
-        wpConfig = wpConfig.replace(/define\('DB_USER', '(.*?)'/, "define('DB_USER', getenv('PRESSLESS_DB_USER')?:'$1'");
-        wpConfig = wpConfig.replace(/define\('DB_PASSWORD', '(.*?)'/, "define('DB_PASSWORD', getenv('PRESSLESS_DB_PASSWORD')?:'$1'");
-        wpConfig = wpConfig.replace(/define\('DB_HOST', '(.*?)'/, "define('DB_HOST', getenv('PRESSLESS_DB_HOST')?:'$1'");
+        if (process.env.PRESSLESS_DB_SSL=='true') wpConfig = wpConfig.replace(/define\(\s*'DB_NAME'/, "define('MYSQL_CLIENT_FLAGS', MYSQL_CLIENT_SSL);\ndefine('DB_NAME'");
+        wpConfig = wpConfig.replace(/define\(\s*'DB_NAME', '(.*?)'/, "define('DB_NAME', getenv('PRESSLESS_DB_NAME')?:'$1'");
+        wpConfig = wpConfig.replace(/define\(\s*'DB_NAME', Evolution::getDbName\('(.*?)'\)/, "define('DB_NAME', getenv('PRESSLESS_DB_NAME')?:'$1'");        
+        wpConfig = wpConfig.replace(/define\(\s*'DB_USER', '(.*?)'/, "define('DB_USER', getenv('PRESSLESS_DB_USER')?:'$1'");
+        wpConfig = wpConfig.replace(/define\(\s*'DB_PASSWORD', '(.*?)'/, "define('DB_PASSWORD', getenv('PRESSLESS_DB_PASSWORD')?:'$1'");
+        wpConfig = wpConfig.replace(/define\(\s*'DB_HOST', '(.*?)'/, "define('DB_HOST', getenv('PRESSLESS_DB_HOST')?:'$1'");
         fs.writeFileSync('.pressless/wordpress/wp-config.php', wpConfig);
         
         async.parallel([
@@ -625,6 +625,41 @@ add_filter('redirect_canonical', 'pressless_canonical');
                 try { fs.unlinkSync('Evolution.php'); } catch (e) {}
             });
         });
+    });
+}); 
+
+program
+  .command('logs')
+  .description('Watch lambda logs')
+  .option("-e, --env <env>", "Environment to use (defaults to 'O')")
+  .option("-r, --region <region>", "Region to use (defaults to 'us-east-1')")
+  .option("-s, --startTime <startTime>", "A specific unit in time to start fetching logs") 
+  .option("-t, --tail", "Optionally tail the logs and keep listening for new logs") 
+  .option("-f, --filter <filter>", "Specify a filter string to filter the log output") 
+  .option("-i, --interval <interval>", "Control the interval at which the framework polls the logs when tailing (default 1000ms)") 
+  .action(function(options) {
+    if (!fs.existsSync('.pressless/serverless.yml')) {
+        return console.log('Pressless: You must first call "pressless setup".');
+    }
+
+    const region = options.region || 'us-east-1';
+    const stage = options.env || 'O';  // default stage must be a string since serverless will upcase it
+
+    if (!stage || stage == '_' || !/^[A-Za-z0-9]+$/.test(stage) || /^\d+$/.test(stage)) {
+        return console.log('Pressless: Environemnt "' + stage + '" is not valid.  Only allows "a-zA-Z0-9_", must be a string (not only numbers) and must not be "_".');
+    }
+
+    shell.cd('.pressless');
+    var child = shell.exec('node_modules/.bin/serverless logs -f f'
+        + ' --stage '+stage
+        + ' --region '+region
+        + (options.verbose?' --verbose':'')
+        + (options.startTime?' --startTime ' + options.startTime:'')
+        + (options.filter?' --filter ' + options.filter:'')
+        + (options.tail?' --tail':'')
+        + (options.interval?' --interval ' + options.interval:''), {async:true});
+    child.stdout.on('data', function(data) {        
+        console.log(data);
     });
 }); 
 
