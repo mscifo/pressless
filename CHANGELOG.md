@@ -1,3 +1,26 @@
+# 0.7.3
+
+## Features
+
+* Set default expiration for all written s3 objects.
+* Make sure we set an appropriate CORS policy for the s3 website bucket.
+* Support for standard wordpress search and for modifying form actions to use the proper domain.
+* Support for specifying custom database credentials during setup command which are populated/retrieved via environment variables, and for RDS IAM Authentication so passwords don't have to be specified/included.
+
+## Bugs
+
+* Remove debugging output when calling overridden file related functions.
+* Switch https -> http for website bucket url's in cached buffer, since website bucket doesn't support https.
+* Cleanup processing of raw post data and ensure requests to /xmlrpc.php always assume raw post data is passed.
+* Move cacheability detection before populating $_SERVER since we now use it to determine the proper host and port.
+* Hardcode the wordpress home/site url's to the pressless domain so it doesn't have to be changed in the database.
+* Override session functions since pressless doesn't include the session extension and some plugins may call them.
+* Disable the wordpress plugin and theme editor/installer.
+* Make sure we return an error page if an E_ERROR is the last occurring error, even if we've already started to render.
+* Added xmlrpc extention to php build, since it may be needed by jetpack.
+* Make sure we remove any login captcha plugins, since they won't work via the pressless domain.
+* Inject some custom wordpress filters via custom wp-content/db.php file in order to ensure the proper home and site urls, as well as to ensure that canonical redirect is disabled in order to avoid a redirect loop.
+
 # 0.7.2
 
 ## Bugs
