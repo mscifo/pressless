@@ -348,19 +348,18 @@ function buffer($buffer) {
         if ($bytesWritten === false || strlen($cacheBuffer) != $bytesWritten) {
             debug('Failed writing buffer to s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key . ".  Wrote $bytesWritten of " . strlen($cacheBuffer) . ' bytes.');
         } else if ($event['httpMethod'] == 'GET') {
+            debug('Waiting until s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key . ' exists...');
+            sleep(1);
+            while (!file_exists('s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key)) {
                 debug('Waiting until s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key . ' exists...');
                 sleep(1);
-                while (!file_exists('s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key)) {
-                    debug('Waiting until s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key . ' exists...');
-                    sleep(1);
-                }
-                
+            }
             debug('Redirecting to http://' . PRESSLESS_S3_WEBSITE_BUCKET . $event['path']);
-                return json_encode([
-                    'statusCode' => 307,
-                    'body' => '',
+            return json_encode([
+                'statusCode' => 307,
+                'body' => '',
                 'headers' => array('Location' => 'http://' . PRESSLESS_S3_WEBSITE_BUCKET . $event['path'])
-                ]);
+            ]);
         }
     }
 
