@@ -1,3 +1,15 @@
+# 0.8.1
+
+## Bugs
+
+* Make sure we account for different variations of wordpress DB_* constants in wp-config.php.
+* Avoid possible issue with installing spawn-sync dependency https://github.com/ForbesLindesay/spawn-sync/issues/42.
+* Avoid possible "permission denied" error when executing serverless standalone by executing it through nodejs instead.
+
+## Other
+
+* Bumped Wordpress Jetpack plugin install to version 5.1.
+
 # 0.8.0
 
 ## Features
