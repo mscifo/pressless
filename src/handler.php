@@ -346,8 +346,7 @@ function buffer($buffer) {
                     $result = $s3Client->putBucketWebsite([
                         'Bucket' => $rootDomainBucket,
                         'RedirectAllRequestsTo' => [
-                            'HostName' => PRESSLESS_S3_WEBSITE_BUCKET,
-                            'Protocol' => 'http'
+                            'HostName' => PRESSLESS_S3_WEBSITE_BUCKET
                         ]
                     ]);     
                 }
