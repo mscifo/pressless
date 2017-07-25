@@ -460,7 +460,8 @@ try {
         }
     } else {
         debug('full wordpress mode');
-        require_once $wpDir . '/index.php';
+        chdir($wpDir);
+        require_once 'index.php';
     }
 } catch (Exception $e) {
     return render(500, array('Content-Type' => 'text/html'), $e->getMessage() . $e->getTraceAsString());
