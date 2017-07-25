@@ -264,7 +264,6 @@ functions:
     // setting explicit path for npm install avoids https://github.com/ForbesLindesay/spawn-sync/issues/42 in some instances
     var nodePath = path.dirname(shell.which('node').toString()); 
     var npmInstall = shell.exec(`npm install`, {silent: false}).stdout;
-    fse.copySync(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager.js'), 'node_modules/serverless-domain-manager/index.js');
 
     console.log(`Pressless: Creating s3 bucket for serverless deployment: pressless-deploys-${website_bucket}...`);
     new aws.S3().createBucket({Bucket: `pressless-deploys-${website_bucket}`}).promise().catch((err) => {
