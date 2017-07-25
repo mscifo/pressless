@@ -38,6 +38,8 @@ Pressless also requires AWS API credentials that have the following policy grant
                 "cloudfront:UpdateDistribution",
                 "logs:DescribeLogGroups",
                 "logs:CreateLogGroup",
+                "route53:ListHostedZones",
+                "route53:ChangeResourceRecordSets",
                 "s3:CreateBucket"
             ],
             "Resource": "*"
