@@ -1,3 +1,17 @@
+# 0.8.2
+
+## Bugs
+
+* Ensure that an s3 website bucket for the root domain is created if the specified s3 website bucket has a subdomain (i.e. www).
+* Fix potential php error by changing to wordpress directory before loading.
+* Added 2 extra IAM permissions in order to auto create Route53 CNAME for pressless domain.
+* Set buffer length for mysqldump command to ensure a restore doesn't fail if the server doesn't support a higher buffer limit.
+* Revert inclusion of PATH variable when performing npm install since it causes more issues than it prevents.
+
+## Other
+
+* Remove custom serverless-domain-manager.  Changes have been merged upstream.
+
 # 0.8.1
 
 ## Bugs
