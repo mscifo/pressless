@@ -357,7 +357,7 @@ program
         return console.log('Pressless: Database dump path "' + dumpSqlFileName + '" doesn\'t exist!');
     }
 
-    var dumpCommand = util.format('mysqldump --skip-add-drop-table -h %s -u %s -p\'%s\' --databases %s >%s', fromDatabase.host, fromDatabase.user, fromDatabase.password, fromDatabase.database, dumpSqlFileName);
+    var dumpCommand = util.format('mysqldump --skip-add-drop-table --net-buffer-length=16384 -h %s -u %s -p\'%s\' --databases %s >%s', fromDatabase.host, fromDatabase.user, fromDatabase.password, fromDatabase.database, dumpSqlFileName);
     shell.exec(dumpCommand, function (code, stdout, stderr) {
         if (code !== 0) {
             return console.log('Pressless: Error dumping database!', stderr);
