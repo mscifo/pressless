@@ -1,3 +1,13 @@
+# 0.8.3
+
+## Bugs
+
+* Fix invalid reference to custom serverless-domain-manager plugin.
+
+## Other
+
+* Added 'powered by' badge.
+
 # 0.8.2
 
 ## Bugs
