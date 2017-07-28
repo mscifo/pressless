@@ -21,7 +21,7 @@ const tld = require('tldjs');
 const unzip = require('unzip');
 const util = require('util');
 
-const ServerlessCustomDomain = require(path.resolve(path.dirname(__dirname),'./lib/serverless-domain-manager'));
+const ServerlessDomainManager = require('serverless-domain-manager');
 const awsProvider = {
     aws: {
         getCredentials: () => {
@@ -229,7 +229,7 @@ functions:
     timeout: 300`;
 
     // check for existance of ACM certificate, otherwise request one
-    const slsDomainManager = new ServerlessCustomDomain({cli: {log: console.log}, providers: awsProvider, service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: domain, certificateName: options.certificate}}}});
+    const slsDomainManager = new ServerlessDomainManager({cli: {log: console.log}, providers: awsProvider, service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: domain, certificateName: options.certificate}}}});
     slsDomainManager.initializeVariables();
     try {
         slsDomainManager.getCertArn()
@@ -296,7 +296,7 @@ program
 
     const domain = getDomain();
     console.log(`Pressless: Creating custom AWS ApiGateway domain: ${domain}...`);
-    const slsDomainManager = new ServerlessCustomDomain({cli: {log: console.log}, providers: awsProvider, service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: getDomain()}}}});
+    const slsDomainManager = new ServerlessDomainManager({cli: {log: console.log}, providers: awsProvider, service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: getDomain()}}}});
     slsDomainManager.initializeVariables();
     slsDomainManager.getDomain().then((data) => {
         console.log('Pressless: Custom AWS ApiGateway domain already exists.');
@@ -561,7 +561,7 @@ add_filter('redirect_canonical', 'pressless_canonical');
             child.stdout.on('finish', function(data) {        
                 console.log("\nPressless: Your site URL is https://" + domain);
 
-                const slsDomainManager = new ServerlessCustomDomain({providers: awsProvider, service: {provider: {region: region}, custom: {customDomain: {domainName: domain}}}});
+                const slsDomainManager = new ServerlessDomainManager({providers: awsProvider, service: {provider: {region: region}, custom: {customDomain: {domainName: domain}}}});
                 slsDomainManager.initializeVariables();
                 slsDomainManager.getDomain().then((data) => {
                     console.log("\nPressless: The following DNS records need to be setup:");
