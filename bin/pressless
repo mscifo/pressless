@@ -166,6 +166,7 @@ package:
     - '**'
   include:
     - .env
+    - .invalidate
     - handler.js
     - handler.php
     - aws.phar
@@ -424,6 +425,7 @@ program
         fse.copySync(path.resolve(path.dirname(__dirname),'./src/handler.php'), '.pressless/handler.php');
         fse.copySync(path.resolve(path.dirname(__dirname),'./lib/aws.phar'), '.pressless/aws.phar');
         fse.copySync(path.resolve(path.dirname(__dirname),'./bin/php'), '.pressless/php');
+        fse.copySync('.invalidate', '.pressless/.invalidate');  // list of urls to invalidate cache after wp save
                                                                                
         console.log('Pressless: Importing existing Wordpress site...');
 
@@ -463,13 +465,12 @@ program
                 return (src.indexOf('.pressless') >= 0 || src.indexOf('.htaccess') >= 0) ? false : true;
             }});
         } else {
-            fse.copySync('index.php', '.pressless/wordpress/index.php');
             fse.copySync('wp-config.php', '.pressless/wordpress/wp-config.php');
             fse.copySync('wp-content', '.pressless/wordpress/wp-content');
 
             fse.copySync('./', '.pressless/wordpress/', {filter: (src, dest) => {
                 // don't cyclical copy, etc
-                return (src.indexOf('.pressless') >= 0 || src.indexOf('.htaccess') >= 0 || src.indexOf('wp-') === 0 || src.indexOf('.php') > 0) ? false : true;
+                return (src.indexOf('.pressless') >= 0 || src.indexOf('.invalidate') >= 0 || src.indexOf('.htaccess') >= 0 || src.indexOf('wp-') === 0 || src.indexOf('.php') > 0) ? false : true;
             }});  
         } 
 
@@ -513,7 +514,7 @@ program
                                 callback(null);
                             });
                     });
-            },
+            },            
             function(callback) {
                 console.log('Pressless: Removing login captcha plugins...');
                 try { fse.removeSync('.pressless/wordpress/wp-content/plugins/login-recaptcha'); } catch (e) {}
@@ -530,6 +531,20 @@ add_filter('pre_option_siteurl', 'pressless_url');
 // ensure we don't redirect_canonical since in order to avoid a redirect loop
 function pressless_canonical($redirect_url, $requested_url = "") { return false; }
 add_filter('redirect_canonical', 'pressless_canonical');
+// catch save events so we can invalidate cache
+function pressless_cache_invalidate($post_id) { 
+    if (false !== wp_is_post_revision($post_id)) return; 
+    global $s3Client; 
+    if (WP_DEBUG) error_log('Deleting '.str_replace(WP_SITEURL, 's3://' . PRESSLESS_S3_WEBSITE_BUCKET, get_permalink($post_id)).'index.html');
+    $s3Client->deleteObject(['Bucket' => PRESSLESS_S3_WEBSITE_BUCKET, 'Key' => str_replace(WP_SITEURL.'/', '', get_permalink($post_id)).'index.html']); 
+    foreach (file('/var/task/.invalidate') as $path) { 
+        if (strpos($path, '/') === 0) {
+            if (WP_DEBUG) error_log('Deleting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . rtrim($path) .'index.html');
+            $s3Client->deleteObject(['Bucket' => PRESSLESS_S3_WEBSITE_BUCKET, 'Key' => rtrim(substr($path,1)).'index.html']); 
+        }
+    } 
+}
+add_action('save_post', 'pressless_cache_invalidate');
 `;
 
                 try { fs.writeFileSync('.pressless/wordpress/wp-content/db.php', customCode); } catch (e) {}
