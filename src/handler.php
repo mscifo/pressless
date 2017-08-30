@@ -238,6 +238,7 @@ function buffer($buffer) {
     // comma separated styles/scripts into multiple 'load[]' query parameters and only the last 
     // instance is passed in the event by ApiGateway
     $newBuffer = preg_replace('/(?<!(?:c=0|ltr))&amp;load%5B%5D=/', '', $buffer);
+    $newBuffer = preg_replace('/load-scripts.php\?c=\d([^&])/', 'load-scripts.php?c=1&load%5B%5D=$1', $newBuffer);
     if (!empty($newBuffer)) $buffer = $newBuffer;
 
     // allow bypassing of cacher for success responses, in case we want to do an initial crawl or specifically hit origin
