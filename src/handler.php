@@ -53,6 +53,7 @@ function obsafe_print_r($var, $level = 0) {
 $_RENDERABLE = false;
 $_RESPONSE = array('statusCode' => 200, 'body' => '', 'headers' => array());
 $_COOKIECOUNT = 0;
+$_SESSION = array('id' => uniqid("", true), 'name' => 'pressless_session');
 
 // import pressless environment variables
 if (!getenv('PRESSLESS_S3_WEBSITE_BUCKET') || !getenv('PRESSLESS_S3_LOGGING_BUCKET')) {
@@ -84,10 +85,22 @@ rename_function("__overridden__", '__overridden__header');
 override_function('setcookie', '', 'global $_RESPONSE;global $_COOKIECOUNT;$args = func_get_args();$_RESPONSE["headers"]["X-Set-Cookie-".++$_COOKIECOUNT] = rawurlencode($args[0]) . "=" . rawurlencode($args[1]) . (empty($args[2]) ? "" : "; expires=" . gmdate("D, d-M-Y H:i:s", $args[2]) . " GMT") . (empty($args[3]) ? "" : "; path=" . $args[3]) . (empty($args[4]) ? "" : "; domain=" . $args[4]) . (empty($args[5]) ? "" : "; secure" . $args[5]) . (empty($args[6]) ? "" : "; HttpOnly" . $args[6]); return null;');
 rename_function("__overridden__", '__overridden__setcookie');
 // override session functions since pressless doesn't include the session extension
-override_function('session_id', '', 'return "1234567890";');
+override_function('session_id', '', 'global $_SESSION;$args = func_get_args();$old_id = $_SESSION["id"];if ($args[0]) $_SESSION["id"] = $args[0];return $old_id;');
 rename_function("__overridden__", '__overridden__session_id');
 override_function('session_start', '', 'return true;');
 rename_function("__overridden__", '__overridden__session_start');
+override_function('session_cache_limiter', '', 'return "nocache";');
+rename_function("__overridden__", '__overridden__session_cache_limiter');
+override_function('session_name', '', 'global $_SESSION;$args = func_get_args();$old_name = $_SESSION["name"];if ($args[0]) $_SESSION["name"] = $args[0];return $old_name;');
+rename_function("__overridden__", '__overridden__session_name');
+override_function('session_get_cookie_params', '', 'return;');
+rename_function("__overridden__", '__overridden__session_get_cookie_params');
+override_function('session_set_cookie_params', '', 'return;');
+rename_function("__overridden__", '__overridden__session_set_cookie_params');
+override_function('session_write_close', '', 'global $_SESSION;$_SESSION = array();;return;');
+rename_function("__overridden__", '__overridden__session_write_close');
+override_function('session_regenerate_id', '', 'global $_SESSION;$_SESSION["id"] = uniqid("", true);return true;');
+rename_function("__overridden__", '__overridden__session_regenerate_id');
 $_SESSION = [];
 
 // override file functions to force an s3 path for writes since lambda filesystem is readonly
