@@ -62,6 +62,12 @@ if (!getenv('PRESSLESS_S3_WEBSITE_BUCKET') || !getenv('PRESSLESS_S3_LOGGING_BUCK
     define('PRESSLESS_S3_WEBSITE_BUCKET', getenv('PRESSLESS_S3_WEBSITE_BUCKET'));
     define('PRESSLESS_S3_LOGGING_BUCKET', getenv('PRESSLESS_S3_LOGGING_BUCKET'));
     define('PRESSLESS_DOMAIN', getenv('PRESSLESS_DOMAIN'));
+
+    if (substr_count(PRESSLESS_S3_WEBSITE_BUCKET, '.') > 1) {
+        $rootDomainBucketParts = explode('.', PRESSLESS_S3_WEBSITE_BUCKET);
+        while (count($rootDomainBucketParts) > 2) { array_shift($rootDomainBucketParts); }
+        define('PRESSLESS_S3_WEBSITE_ROOT_BUCKET', implode('.', $rootDomainBucketParts));
+    }
 }
 
 // hardcode wordpress URLs
@@ -352,6 +358,24 @@ function buffer($buffer) {
                 }
             } catch (Aws\S3\Exception\S3Exception $e) {
                 debug('Error creating s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' bucket: ' . $e->getMessage());
+            }
+        }
+
+        if (!is_dir('s3://' . PRESSLESS_S3_WEBSITE_ROOT_BUCKET)) {
+            debug('Creating s3://' . PRESSLESS_S3_WEBSITE_ROOT_BUCKET . ' bucket');
+            try {                
+                // make sure we create bucket for root domain
+                
+                $result = $s3Client->createBucket(['ACL' => 'public-read', 'Bucket' => PRESSLESS_S3_WEBSITE_ROOT_BUCKET]);
+                debug('Setting s3://' . PRESSLESS_S3_WEBSITE_ROOT_BUCKET . ' website policy');
+                $result = $s3Client->putBucketWebsite([
+                    'Bucket' => PRESSLESS_S3_WEBSITE_ROOT_BUCKET,
+                    'RedirectAllRequestsTo' => [
+                        'HostName' => PRESSLESS_S3_WEBSITE_BUCKET
+                    ]
+                ]);     
+            } catch (Aws\S3\Exception\S3Exception $e) {
+                debug('Error creating s3://' . PRESSLESS_S3_WEBSITE_ROOT_BUCKET . ' bucket: ' . $e->getMessage());
             }
         }
 
