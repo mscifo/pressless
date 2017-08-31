@@ -581,7 +581,7 @@ add_action('save_post', 'pressless_cache_invalidate');
             if (isEvolution) fse.moveSync('.pressless/wordpress', '.pressless/web');
 
             shell.cd('.pressless');
-            var deployCommand = 'nodejs node_modules/.bin/serverless deploy';
+            var deployCommand = 'node node_modules/.bin/serverless deploy';
             if (options.function) deployCommand += ' function -f f';
             var child = shell.exec(deployCommand
                 + ' --stage '+stage
@@ -726,7 +726,7 @@ program
     }
 
     shell.cd('.pressless');
-    var child = shell.exec('nodejs node_modules/.bin/serverless logs -f f'
+    var child = shell.exec('node node_modules/.bin/serverless logs -f f'
         + ' --stage '+stage
         + ' --region '+region
         + (options.verbose?' --verbose':'')
@@ -753,7 +753,7 @@ program
     const localMode = stage == 'local' ? stage : '';
 
     shell.cd('.pressless');
-    shell.exec('nodejs node_modules/.bin/serverless invoke ' + localMode + ' -f ' + functionName + ' -d ' + eventData);
+    shell.exec('node node_modules/.bin/serverless invoke ' + localMode + ' -f ' + functionName + ' -d ' + eventData);
 });
 
 program
