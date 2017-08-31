@@ -1,3 +1,9 @@
+# 0.9.1
+
+## Bugs
+
+* Added missing ACL declaration to ensure the `copyuploads` command makes files publicly readable.
+
 # 0.9.0
 
 ## Features
