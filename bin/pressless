@@ -679,7 +679,8 @@ program
     deleteRemoved: false,
     s3Params: {
       Bucket: bucket,
-      Prefix: "wp-content/uploads"
+      Prefix: "wp-content/uploads",
+      ACL: "public-read"
     }
   };
   var uploader = client.uploadDir(params);
