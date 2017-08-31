@@ -11,6 +11,7 @@
 * Fixed issue that may have prevented root domain s3 bucket from being created.
 * Added another check to ensure `load-scripts.php` is buffered properly in order to ensure necessary javascript files are included.
 * Added some missing session related functions which may be used by some wordpress plugins.
+* Switched from using `nodejs` to `node` binary in shell calls since `nodejs` is legacy and might not always exist.
 
 # 0.8.3
 
