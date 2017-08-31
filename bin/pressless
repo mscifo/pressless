@@ -11,10 +11,13 @@ const exec = require('child_process').exec;
 const fs = require('fs');
 const fse = require('fs-extra');
 const fstream = require('fstream');
+const fsu = require("nodejs-fs-utils");
 const os = require('os');
 const path = require('path');
 const program = require('commander');
+const progress = require('cli-progress');
 const request = require('request');
+const s3 = require('s3');
 const shell = require('shelljs');
 const tarball = require('tarball-extract');
 const tld = require('tldjs');
@@ -73,6 +76,7 @@ program
   .description('Setup pressless configuration and install dependencies')
   .option("-c, --certificate <certificate>", "AWS ACM certificate name to use")
   .option("-d, --dsn <dsn>", "(optional) Data source name [mysql+ssl://user:password@host:port/database]")
+  .option("-u, --include-uploads", "(optional) Force inclusion of wp-content/uploads/ into the AWS Lambda package")
   .action(function(domain, website_bucket, options) {
     // look for wp-config.php
     if (!fs.existsSync('wp-config.php')) {
@@ -100,6 +104,15 @@ program
         if (!dsn.get('host') || !dsn.get('user') || !dsn.get('database')) {
             return console.log('Pressless: ' + options.dsn + ' is not a DSN!');
         }     
+    }
+
+    console.log('Pressless: Checking size of "wp-content/uploads"...');
+    var excludeUploads = '';
+    var uploadSize = fsu.fsizeSync('wp-content/uploads/') / 1000000;
+    console.log('Pressless: Size of "wp-content/uploads" is ' + uploadSize + ' MB');
+    if (uploadSize > 200 && !options.includeUploads) {
+        console.log('Pressless: [NOTICE] Skipping inclusion of your "wp-content/uploads" directory since your deploy may fail due to AWS Lambda package size limits.  To force inclusion, rerun "pressless setup" with the "--include-uploads" flag.  After you deploy, you can run "pressless copyuploads" to sync your "wp-content/uploads" directory to your Pressless AWS S3 bucket.');
+        excludeUploads = "- wordpress/wp-content/uploads/**\n    - web/wp-content/uploads/**"
     }
 
     console.log('Pressless: Setting up...');
@@ -164,6 +177,7 @@ package:
   exclude:
     - '*'
     - '**'
+    ${excludeUploads}
   include:
     - .env
     - .invalidate
@@ -642,6 +656,52 @@ add_action('save_post', 'pressless_cache_invalidate');
             });
         });
     });
+}); 
+
+program
+.command('copyuploads')
+.description('Copy "wp-content/uploads" to S3')
+.action(function(options) {
+  // look for wp-config.php
+  if (!fs.existsSync('wp-config.php')) {
+      return console.log('Pressless: Unable to find a valid Wordpress installation.  Please run pressless inside your Wordpress directory.');
+  }
+
+  console.log('Pressless: Copying files to S3...');
+  var bucket = getWebsiteBucket();
+  var client = s3.createClient({s3Client: new aws.S3()});
+  var progressBar = new progress.Bar({etaBuffer:2000, fps: 100, format: "[{bar}] {percentage}% | ETA {eta_formatted}"});
+  var started = false;
+  var totalFiles = 0;
+
+  var params = {
+    localDir: "wp-content/uploads",
+    deleteRemoved: false,
+    s3Params: {
+      Bucket: bucket,
+      Prefix: "wp-content/uploads"
+    }
+  };
+  var uploader = client.uploadDir(params);
+  uploader.on('error', function(err) {
+    console.error("Pressless: Unable to copy files to S3:", err.message);
+    if (err.message == 'Access Denied') {
+        console.log("\nYou need to ensure your AWS credentials have the appropriate S3 permissions to upload to s3://" + bucket);        
+        process.exit(1);
+    }
+  });
+  uploader.on('progress', function() {
+    if (totalFiles < uploader.progressTotal) {
+        progressBar.start(parseInt(uploader.progressTotal), 1);
+        totalFiles = uploader.progressTotal;
+    }
+    progressBar.update(parseInt(uploader.progressAmount));
+  });
+  uploader.on('end', function() {
+    progressBar.stop();
+    console.log("Pressless: Finished");
+    process.exit(0);
+  });  
 }); 
 
 program
