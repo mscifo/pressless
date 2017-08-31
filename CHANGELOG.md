@@ -1,3 +1,17 @@
+# 0.9.0
+
+## Features
+
+* Added functionality to invalidate s3 cache when a post/page is saved, along with invalidating any other cached URLs defined in an `.invalidate` file.
+* Added functionality to check file size of the `wp-content/uploads` directory and exclude it if it's greater than 200MB unless the `--include-uploads` CLI option is specified.
+* Added the `copyuploads` command which syncs the `wp-content/uploads` directory to S3 for use when the directory was excluded due to a large file size.
+
+## Bugs
+
+* Fixed issue that may have prevented root domain s3 bucket from being created.
+* Added another check to ensure `load-scripts.php` is buffered properly in order to ensure necessary javascript files are included.
+* Added some missing session related functions which may be used by some wordpress plugins.
+
 # 0.8.3
 
 ## Bugs
