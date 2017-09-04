@@ -1,3 +1,17 @@
+# 0.9.2
+
+## Features
+
+* Added support for specifying custom path with `copyuploads` command.
+
+## Bugs
+
+* Some s3 bucket creation cleanup.
+* Don't break if `.invalidate` file doesn't exist.
+* Fixed issue that was causing "wp-content/uploads" to be improperly included in AWS Lambda package.
+* Fixed permission issue when attempting to create root domain s3 bucket.
+* Hardcoded `serverless` version since newer updates broke php binary.
+
 # 0.9.1
 
 ## Bugs
