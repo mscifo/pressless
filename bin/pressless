@@ -664,6 +664,7 @@ add_action('save_post', 'pressless_cache_invalidate');
 program
 .command('copyuploads')
 .description('Copy "wp-content/uploads" to S3')
+.option("-p, --path <path>", "Path to upload instead of \"wp-content/uploads\"")
 .action(function(options) {
   // look for wp-config.php
   if (!fs.existsSync('wp-config.php')) {
@@ -678,11 +679,11 @@ program
   var totalFiles = 0;
 
   var params = {
-    localDir: "wp-content/uploads",
+    localDir: options.path ? options.path : "wp-content/uploads",
     deleteRemoved: false,
     s3Params: {
       Bucket: bucket,
-      Prefix: "wp-content/uploads",
+      Prefix: options.path ? options.path : "wp-content/uploads",
       ACL: "public-read"
     }
   };
