@@ -192,11 +192,9 @@ package:
     - node_modules/binary-case/**
     - node_modules/dotenv/**
     - php
-    - wordpress/**
     - Evolution.php
     - lib/**
     - vendor/**
-    - web/**
 
 plugins:
   - serverless-domain-manager
