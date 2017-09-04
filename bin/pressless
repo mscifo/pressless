@@ -121,6 +121,7 @@ program
     website_bucket = website_bucket.toLowerCase();
     const name = domain.replace(/[\.\_\']/g, '-').substring(0, domain.length - (options.region||'us-east-1').length - '-------lambdaRole'.length);  // created iam role must be <= 64 chars
     const loggingBucket = website_bucket + '-logs';
+    const rootWebsiteBucket = website_bucket.replace(/^www./, '');
 
     const dotenv = `PRESSLESS_DOMAIN=${domain}
 PRESSLESS_S3_WEBSITE_BUCKET=${website_bucket}
@@ -167,6 +168,8 @@ provider:
         - 'arn:aws:s3:::${loggingBucket}/*'
         - 'arn:aws:s3:::${website_bucket}'
         - 'arn:aws:s3:::${website_bucket}/*'
+        - 'arn:aws:s3:::${rootWebsiteBucket}'
+        - 'arn:aws:s3:::${rootWebsiteBucket}/*'        
     - Effect: 'Allow'
       Action:
         - 'rds-db:connect'
