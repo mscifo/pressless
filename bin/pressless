@@ -442,7 +442,7 @@ program
         fse.copySync(path.resolve(path.dirname(__dirname),'./src/handler.php'), '.pressless/handler.php');
         fse.copySync(path.resolve(path.dirname(__dirname),'./lib/aws.phar'), '.pressless/aws.phar');
         fse.copySync(path.resolve(path.dirname(__dirname),'./bin/php'), '.pressless/php');
-        fse.copySync('.invalidate', '.pressless/.invalidate');  // list of urls to invalidate cache after wp save
+        try { fse.copySync('.invalidate', '.pressless/.invalidate'); } catch (e) {} // list of urls to invalidate cache after wp save
                                                                                
         console.log('Pressless: Importing existing Wordpress site...');
 
