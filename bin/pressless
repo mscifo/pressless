@@ -180,6 +180,8 @@ package:
   exclude:
     - '*'
     - '**'
+    - '!wordpress/**'
+    - '!web/**'
     ${excludeUploads}
   include:
     - .env
