@@ -136,7 +136,7 @@ ${dsn.get('database')?'PRESSLESS_DB_NAME='+dsn.get('database'):''}`;
   "dependencies": {
     "binary-case": "^1.1.3",
     "dotenv": "^4.0.0",
-    "serverless": "^1.0.0",
+    "serverless": "1.17.0",
     "serverless-domain-manager": "^1.1.0",
     "serverless-apigw-binary": "^0.3.4"
   }
