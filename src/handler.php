@@ -322,13 +322,6 @@ function buffer($buffer) {
                         ]
                     ]
                 ]);
-                debug('Setting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' logging policy');
-                $result = $s3Client->putBucketLogging([
-                    'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
-                    'LoggingEnabled' => [
-                        'TargetBucket' => PRESSLESS_S3_LOGGING_BUCKET
-                    ]
-                ]);
                 debug('Setting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' CORS policy');
                 $result = $s3Client->putBucketCors([
                     'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
@@ -353,23 +346,13 @@ function buffer($buffer) {
                         ]
                     ]
                 ]);
-
-                // make sure we create bucket for root domain
-                if (substr_count(PRESSLESS_S3_WEBSITE_BUCKET, '.') > 1) {
-                    $rootDomainBucketParts = explode('.', PRESSLESS_S3_WEBSITE_BUCKET);
-                    while (count($rootDomainBucketParts) > 2) { array_shift($rootDomainBucketParts); }
-                    $rootDomainBucket = implode('.', $rootDomainBucketParts);
-
-                    debug('Creating s3://' . $rootDomainBucket . ' bucket');
-                    $result = $s3Client->createBucket(['ACL' => 'public-read', 'Bucket' => $rootDomainBucket]);
-                    debug('Setting s3://' . $rootDomainBucket . ' website policy');
-                    $result = $s3Client->putBucketWebsite([
-                        'Bucket' => $rootDomainBucket,
-                        'RedirectAllRequestsTo' => [
-                            'HostName' => PRESSLESS_S3_WEBSITE_BUCKET
-                        ]
-                    ]);     
-                }
+                debug('Setting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' logging policy');
+                $result = $s3Client->putBucketLogging([
+                    'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
+                    'LoggingEnabled' => [
+                        'TargetBucket' => PRESSLESS_S3_LOGGING_BUCKET
+                    ]
+                ]);
             } catch (Aws\S3\Exception\S3Exception $e) {
                 debug('Error creating s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' bucket: ' . $e->getMessage());
             }
@@ -379,7 +362,6 @@ function buffer($buffer) {
             debug('Creating s3://' . PRESSLESS_S3_WEBSITE_ROOT_BUCKET . ' bucket');
             try {                
                 // make sure we create bucket for root domain
-                
                 $result = $s3Client->createBucket(['ACL' => 'public-read', 'Bucket' => PRESSLESS_S3_WEBSITE_ROOT_BUCKET]);
                 debug('Setting s3://' . PRESSLESS_S3_WEBSITE_ROOT_BUCKET . ' website policy');
                 $result = $s3Client->putBucketWebsite([
