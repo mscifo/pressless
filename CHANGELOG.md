@@ -1,3 +1,9 @@
+# 0.9.3
+
+## Bugs
+
+* Check for existance of `.invalidate` file before processing it.
+
 # 0.9.2
 
 ## Features
