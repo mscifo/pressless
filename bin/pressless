@@ -554,7 +554,7 @@ function pressless_cache_invalidate($post_id) {
     global $s3Client; 
     if (WP_DEBUG) error_log('Deleting '.str_replace(WP_SITEURL, 's3://' . PRESSLESS_S3_WEBSITE_BUCKET, get_permalink($post_id)).'index.html');
     $s3Client->deleteObject(['Bucket' => PRESSLESS_S3_WEBSITE_BUCKET, 'Key' => str_replace(WP_SITEURL.'/', '', get_permalink($post_id)).'index.html']); 
-    foreach (file('/var/task/.invalidate') as $path) { 
+    if (file_exists('/var/task/.invalidate')) foreach (file('/var/task/.invalidate') as $path) { 
         if (strpos($path, '/') === 0) {
             if (WP_DEBUG) error_log('Deleting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . rtrim($path) .'index.html');
             $s3Client->deleteObject(['Bucket' => PRESSLESS_S3_WEBSITE_BUCKET, 'Key' => rtrim(substr($path,1)).'index.html']); 
