@@ -841,7 +841,6 @@ program
           }
       };
     
-      console.log(params);
       s3.deleteObjects(params, function(err, data) {
           if (err) console.log(err);
           if (data && data.Errors && data.Errors.size > 0) console.log(data.Errors);
