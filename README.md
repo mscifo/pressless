@@ -146,8 +146,11 @@ pressless
     domain                                     Create AWS ApiGateway custom domain
     copydb <dsn>                               Copy database
     deploy [options]                           Deploy Wordpress via Serverless
-    copyuploads                                Copy "wp-content/uploads" to S3
+    copyuploads [options]                      Copy "wp-content/uploads" to S3
+    logs [options]                             Watch lambda logs
     test <stage> <request_path>                Test the Serverless function
+    warm                                       Warm the S3 website bucket cache by crawling all pages
+    invalidate                                 Invalidate the S3 website bucket cache
 
   Options:
 
