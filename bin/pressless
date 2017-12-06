@@ -487,7 +487,7 @@ program
 
             fse.copySync('./', '.pressless/wordpress/', {filter: (src, dest) => {
                 // don't cyclical copy, etc
-                return (src.indexOf('.pressless') >= 0 || src.indexOf('.invalidate') >= 0 || src.indexOf('.htaccess') >= 0 || src.indexOf('wp-') === 0 || src.indexOf('.php') > 0) ? false : true;
+                return (src.indexOf('.pressless') >= 0 || src.indexOf('.invalidate') >= 0 || src.indexOf('.htaccess') >= 0 || src.indexOf('wp-') === 0 || src.indexOf('index.php') >= 0 || src.indexOf('xmlrpc.php') >= 0) ? false : true;
             }});  
         } 
 
