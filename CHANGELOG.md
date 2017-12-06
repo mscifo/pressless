@@ -1,3 +1,9 @@
+# 0.9.5
+
+## Bugs
+
+* Removed some leftover debug output.
+
 # 0.9.4
 
 ## Features
