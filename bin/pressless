@@ -807,6 +807,67 @@ program
     crawler.start();
 }); 
 
+program
+.command('invalidate')
+.description('Invalidate the S3 website bucket cache (except `wp-content`)')
+.action(function(options) {
+  if (!fs.existsSync('.pressless/serverless.yml')) {
+      return console.log('Pressless: You must first call "pressless setup".');
+  }
+
+  console.log("Deleting all cached files in s3://" + getWebsiteBucket());
+
+  const s3 = new aws.S3();
+  var allKeys = [];
+
+  function listAllKeys(token, cb) {
+      var opts = { Bucket: getWebsiteBucket() };
+      if (token) opts.ContinuationToken = token;
+  
+      s3.listObjectsV2(opts, function(err, data) {
+          allKeys = allKeys.concat(data.Contents.map(function(obj) { return obj.Key; }));
+          return data.IsTruncated ? listAllKeys(data.NextContinuationToken, cb): cb();
+      });
+  }
+
+  function deleteKeys(keys) {
+      if (!keys || keys.length == 0) return;
+
+      var params = {
+          Bucket: getWebsiteBucket(), 
+          Delete: {
+              Objects: keys,
+              Quiet: false
+          }
+      };
+    
+      console.log(params);
+      s3.deleteObjects(params, function(err, data) {
+          if (err) console.log(err);
+          if (data && data.Errors && data.Errors.size > 0) console.log(data.Errors);
+      });      
+  }
+  
+  listAllKeys(null, function() {
+      var count = 0;
+      var chunkKeys = [];
+      allKeys.forEach(function(key) {
+          if (key.indexOf('wp-content') == 0) return; // skip wp-content files
+
+          count++;
+          chunkKeys.push({Key: key});
+
+          if (count < 1000) return;
+
+          deleteKeys(chunkKeys);
+          
+          count = 0;
+          chunkKeys = [];
+      });
+      deleteKeys(chunkKeys);
+  });
+}); 
+
 asciify('pressless', {font: 'larry3d', maxWidth: 75}, function (err, result) {
     result = result.toString().replace('                                                                 ', "                ---helping wordpress cost less---");
     console.log(result);
