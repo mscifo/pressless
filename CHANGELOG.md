@@ -1,3 +1,21 @@
+# 0.9.4
+
+## Features
+
+* Support preflight checks and set appropriate access control headers.
+* Added new `invalidate` command to clear the S3 website bucket cache (except `wp-content`).
+
+## Bugs
+
+* Ensure that non-wordpress php files in root directory are copied to package.
+* Ensure a proper status code is provided when returning a redirect header.
+* Populate the $_REQUEST superglobal.
+* Fix the call for setting the s3 bucket lifecycle configuration.
+* Properly urldecode the provided url path.
+* Continue processing a suspected static file that turned out not to be.
+* Assume paths without extensions are directory paths and append slash if missing.
+* Remove apiMode variable, it's not needed.
+
 # 0.9.3
 
 ## Bugs
