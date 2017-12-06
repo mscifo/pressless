@@ -1,6 +1,18 @@
 <?php
 error_reporting(0);
 
+// Get event data and context object
+$event = json_decode($argv[1], true) ?: [];
+$context = json_decode($argv[2], true) ?: [];
+
+// initialize globals
+$wpDir = file_exists('web') ? 'web' : 'wordpress';
+$originScheme = (strpos($event['headers']['origin'], 'https://') === 0) ? 'https://' : 'http://';
+$_RENDERABLE = false;
+$_RESPONSE = array('statusCode' => 200, 'body' => '', 'headers' => array());
+$_COOKIECOUNT = 0;
+$_SESSION = array('id' => uniqid("", true), 'name' => 'pressless_session');
+
 // in case wordpress crashes, we want to know why
 function shutdown() {
     global $_RENDERABLE;
@@ -22,6 +34,34 @@ function shutdown() {
     }
 }
 register_shutdown_function('shutdown');
+
+// import pressless environment variables
+if (!getenv('PRESSLESS_S3_WEBSITE_BUCKET') || !getenv('PRESSLESS_S3_LOGGING_BUCKET')) {
+    debug('Missing pressless environment variables');
+    trigger_error('Missing pressless environment variables', E_USER_WARNING);
+} else {
+    define('PRESSLESS_S3_WEBSITE_BUCKET', getenv('PRESSLESS_S3_WEBSITE_BUCKET'));
+    define('PRESSLESS_S3_LOGGING_BUCKET', getenv('PRESSLESS_S3_LOGGING_BUCKET'));
+    define('PRESSLESS_DOMAIN', getenv('PRESSLESS_DOMAIN'));
+
+    if (substr_count(PRESSLESS_S3_WEBSITE_BUCKET, '.') > 1) {
+        $rootDomainBucketParts = explode('.', PRESSLESS_S3_WEBSITE_BUCKET);
+        while (count($rootDomainBucketParts) > 2) { array_shift($rootDomainBucketParts); }
+        define('PRESSLESS_S3_WEBSITE_ROOT_BUCKET', implode('.', $rootDomainBucketParts));
+    }
+}
+
+// handle preflight requests
+if ($event['httpMethod'] == 'OPTIONS') {
+    return print(json_encode([
+        'statusCode' => 200,
+        'body' => '',
+        'headers' => array(
+            'Access-Control-Allow-Origin' => $originScheme . PRESSLESS_S3_WEBSITE_BUCKET,
+            'Access-Control-Allow-Headers' => 'Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With'
+        )
+    ]));
+}
 
 require_once 'aws.phar';
 
@@ -49,28 +89,6 @@ function obsafe_print_r($var, $level = 0) {
     return $output;
 }
 
-// initialize globals
-$_RENDERABLE = false;
-$_RESPONSE = array('statusCode' => 200, 'body' => '', 'headers' => array());
-$_COOKIECOUNT = 0;
-$_SESSION = array('id' => uniqid("", true), 'name' => 'pressless_session');
-
-// import pressless environment variables
-if (!getenv('PRESSLESS_S3_WEBSITE_BUCKET') || !getenv('PRESSLESS_S3_LOGGING_BUCKET')) {
-    debug('Missing pressless environment variables');
-    trigger_error('Missing pressless environment variables', E_USER_WARNING);
-} else {
-    define('PRESSLESS_S3_WEBSITE_BUCKET', getenv('PRESSLESS_S3_WEBSITE_BUCKET'));
-    define('PRESSLESS_S3_LOGGING_BUCKET', getenv('PRESSLESS_S3_LOGGING_BUCKET'));
-    define('PRESSLESS_DOMAIN', getenv('PRESSLESS_DOMAIN'));
-
-    if (substr_count(PRESSLESS_S3_WEBSITE_BUCKET, '.') > 1) {
-        $rootDomainBucketParts = explode('.', PRESSLESS_S3_WEBSITE_BUCKET);
-        while (count($rootDomainBucketParts) > 2) { array_shift($rootDomainBucketParts); }
-        define('PRESSLESS_S3_WEBSITE_ROOT_BUCKET', implode('.', $rootDomainBucketParts));
-    }
-}
-
 // hardcode wordpress URLs
 define('WP_HOME', 'https://'.PRESSLESS_DOMAIN);
 define('WP_SITEURL', 'https://'.PRESSLESS_DOMAIN);
@@ -79,7 +97,7 @@ define('WP_SITEURL', 'https://'.PRESSLESS_DOMAIN);
 define('DISALLOW_FILE_MODS', true);
 
 // override header function so we can catch/process headers, instead of wordpress outputting them directly (and then possibly exiting)
-override_function('header', '$string', 'global $_RESPONSE;$parts = explode(": ", $string); if (is_array($parts) && count($parts) >= 2) { $_RESPONSE["headers"][$parts[0]] = $parts[1]; } else if (strpos($string, "HTTP/1.0 ") == 0) { $code = explode(" ", $string); if (is_array($code) && count($code) >= 2) { $_RESPONSE["statusCode"] = intval($code[1]); } } return null;');
+override_function('header', '$string', 'global $_RESPONSE;$parts = explode(": ", $string); if (is_array($parts) && count($parts) >= 2) { $_RESPONSE["headers"][$parts[0]] = $parts[1]; if ($parts[0] == "Location") { $_RESPONSE["statusCode"] = 302; } } else if (strpos($string, "HTTP/1.0 ") == 0) { $code = explode(" ", $string); if (is_array($code) && count($code) >= 2) { $_RESPONSE["statusCode"] = intval($code[1]); } } return null;');
 rename_function("__overridden__", '__overridden__header');
 // override setcookie function so we can capture the resulting header and modify the Set-Cookie header name to allow for multiple cookies to be set, which we process using binary case iteration in handler.js
 override_function('setcookie', '', 'global $_RESPONSE;global $_COOKIECOUNT;$args = func_get_args();$_RESPONSE["headers"]["X-Set-Cookie-".++$_COOKIECOUNT] = rawurlencode($args[0]) . "=" . rawurlencode($args[1]) . (empty($args[2]) ? "" : "; expires=" . gmdate("D, d-M-Y H:i:s", $args[2]) . " GMT") . (empty($args[3]) ? "" : "; path=" . $args[3]) . (empty($args[4]) ? "" : "; domain=" . $args[4]) . (empty($args[5]) ? "" : "; secure" . $args[5]) . (empty($args[6]) ? "" : "; HttpOnly" . $args[6]); return null;');
@@ -174,12 +192,6 @@ rename_function('closedir', '__alias__closedir');
 override_function('closedir', '', 'return call_user_func_array("__alias__closedir", s3_func_get_args(func_get_args()));');
 rename_function("__overridden__", '__overridden__closedir');
 
-// Get event data and context object
-$event = json_decode($argv[1], true) ?: [];
-$context = json_decode($argv[2], true) ?: [];
-$apiMode = $event['pressless_api_only'] ?: false;
-$wpDir = file_exists('web') ? 'web' : 'wordpress';
-
 // detect cacheability of request
 $cacheable = false;
 if ($event['httpMethod'] == 'GET'
@@ -214,6 +226,7 @@ foreach ($event['queryStringParameters'] as $k => $v) {
     }
 }
 debug('GET: ' . print_r($_GET, true));
+$_REQUEST = $_GET;
 // ensure $_SERVER['REQUEST_URI'] has the query string if query string parameters exist
 $_SERVER['REQUEST_URI'] .= empty($_GET) ? '' : '?'.http_build_query($_GET);
 //$_SERVER['QUERY_STRING'] .= empty($_GET) ? '' : http_build_query($_GET);
@@ -245,6 +258,7 @@ function buffer($buffer) {
     global $_RESPONSE;
     global $cacheable;
     global $event;
+    global $originScheme;
     global $s3Client;
 
     // we need to fix references to load-scripts.php and load-styles.php, since they split the 
@@ -335,13 +349,14 @@ function buffer($buffer) {
                     ],
                 ]);    
                 debug('Setting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . ' lifecycle policy');
-                $result = $s3Client->putBucketLifecycleConfiguration([
+                $result = $s3Client->putBucketLifecycle([
                     'Bucket' => PRESSLESS_S3_WEBSITE_BUCKET,
                     'Rules' => [
                         [
                             'Expiration' => [
                                 'Days' => 365
                             ],
+                            'Prefix' => '',
                             'Status' => 'Enabled'
                         ]
                     ]
@@ -376,7 +391,7 @@ function buffer($buffer) {
         }
 
         // append 'index.html' for directories since we obviously can't store buffer as a directory name
-        $s3Key = (strcmp(substr($event['path'], strlen($event['path']) - 1), '/') === 0) ? $event['path'] . 'index.html' : $event['path'];
+        $s3Key = (strcmp(substr($event['path'], strlen($event['path']) - 1), '/') === 0) ? urldecode($event['path']) . 'index.html' : urldecode($event['path']);
 
         debug('Writing buffer to s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key);
         $stream = fopen('s3://' . PRESSLESS_S3_WEBSITE_BUCKET . $s3Key, 'w', false, stream_context_create(['s3' => ['ACL' => 'public-read', 'Expires' => $expires]]));       
@@ -403,7 +418,11 @@ function buffer($buffer) {
     return json_encode([
         'statusCode' => intval($_RESPONSE['statusCode']) ?: 200,
         'body' => $buffer,
-        'headers' => !empty($_RESPONSE['headers']) ? $_RESPONSE['headers'] : array()
+        'headers' => !empty($_RESPONSE['headers']) ? $_RESPONSE['headers'] : array(
+            'Content-Type' => 'text/html',
+            'Access-Control-Allow-Origin' => $originScheme . PRESSLESS_S3_WEBSITE_BUCKET,
+            'Access-Control-Allow-Headers' => 'Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With'
+        )
     ]);
 }
 
@@ -417,7 +436,7 @@ try {
     debug('path is ' . $event['path']);
     $path_parts = pathinfo($event['path']);   
     if ($event['path'] != '/' && in_array($path_parts['extension'], array('html','htm','css','txt','csv','scss','json','xml','ico','js','gif','jpg','jpeg','png','pdf','otf','ttf','woff','eot','svg','zip'))) {
-        $file = (strpos($event['path'], '/tmp/') === 0) ? $event['path'] : $wpDir . $event['path'];
+        $file = (strpos($event['path'], '/tmp/') === 0) ? urldecode($event['path']) : $wpDir . urldecode($event['path']);
         if (is_readable($file)) {
             debug('serving static file ' . $file); 
             $isBase64 = false;
@@ -441,11 +460,17 @@ try {
             return render(200, array('Content-Type' => $fileType, 'X-Binary' => ($isBase64?'true':'false')), $fileContents);
         } else {
             debug('unable to read static file ' . $file); 
-            return render(404);
+            // if the static file doesn't exist, don't try to process it as wordpress slug
+            // return render(404);
         }
     }
 
-    if ($apiMode) {
+    if (!$path_parts['extension'] && strcmp(substr($event['path'], strlen($event['path']) - 1), '/') !== 0) {
+        // assume directory path with missing trailing slash
+        $event['path'] .= '/';
+    }
+
+    if ($event['pressless_api_only']) {
         debug('api-only mode');
         require_once $wpDir . '/wp-config.php';
         // this might unintentionally bypass auth checks
