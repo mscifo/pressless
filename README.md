@@ -150,7 +150,7 @@ pressless
     logs [options]                             Watch lambda logs
     test <stage> <request_path>                Test the Serverless function
     warm                                       Warm the S3 website bucket cache by crawling all pages
-    invalidate                                 Invalidate the S3 website bucket cache
+    invalidate                                 Invalidate the S3 website bucket cache (except `wp-content`)
 
   Options:
 
