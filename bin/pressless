@@ -851,7 +851,7 @@ program
       var count = 0;
       var chunkKeys = [];
       allKeys.forEach(function(key) {
-          if (key.indexOf('wp-content') == 0) return; // skip wp-content files
+          if (key.indexOf('wp-content/uploads') == 0) return; // skip wp-content/uploads files
 
           count++;
           chunkKeys.push({Key: key});
