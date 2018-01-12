@@ -1,3 +1,10 @@
+# 0.9.6
+
+## Features
+
+* Updated `invalidate` command to also clear contents of `wp-content` directory, minus `wp-content/uploads` whichmay not be in version control.
+* Added new `exportdb` command for exporting a pressless database.
+
 # 0.9.5
 
 ## Bugs
