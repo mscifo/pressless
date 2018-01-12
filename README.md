@@ -145,12 +145,13 @@ pressless
     setup [options] <domain> <website_bucket>  Setup pressless configuration and install dependencies
     domain                                     Create AWS ApiGateway custom domain
     copydb <dsn>                               Copy database
+    exportdb <db_username>                     Export the Pressless database
     deploy [options]                           Deploy Wordpress via Serverless
     copyuploads [options]                      Copy "wp-content/uploads" to S3
     logs [options]                             Watch lambda logs
     test <stage> <request_path>                Test the Serverless function
     warm                                       Warm the S3 website bucket cache by crawling all pages
-    invalidate                                 Invalidate the S3 website bucket cache (except `wp-content`)
+    invalidate                                 Invalidate the S3 website bucket cache (except `wp-content/uploads`)
 
   Options:
 

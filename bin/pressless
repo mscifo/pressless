@@ -16,6 +16,7 @@ const os = require('os');
 const path = require('path');
 const program = require('commander');
 const progress = require('cli-progress');
+const prompt = require('prompt');
 const request = require('request');
 const s3 = require('s3');
 const shell = require('shelljs');
@@ -393,6 +394,41 @@ program
             }
 
             console.log('Pressless: Database successfully copied.')
+        });
+    });
+}); 
+
+program
+  .command('exportdb <username>')
+  .description('Export database')
+  .action(function(username, options) {
+    if (!fs.existsSync('.pressless/serverless.yml')) {
+        return console.log('Pressless: You must first call "pressless setup".');
+    } else {
+        require('dotenv').config({path: '.pressless/.env'})
+    }
+
+    if (!shell.which('mysqldump')) {
+        return console.log('Pressless: mysqldump is required but not found.');
+    }
+
+    prompt.message = '';
+    prompt.delimiter = '';
+    prompt.start({stdout: process.stderr});
+    prompt.get([{
+        name: 'password',
+        description: 'Enter database password:',
+        hidden: true,
+        required: true
+      }], function (err, result) {
+        var dumpCommand = util.format('mysqldump --net-buffer-length=16384 -h %s -u %s -p\'%s\' --databases %s', process.env.PRESSLESS_DB_HOST, username, result.password, process.env.PRESSLESS_DB_NAME);
+        shell.exec(dumpCommand, function (code, stdout, stderr) {
+            if (code !== 0) {
+                return console.log('Pressless: Error exporting database!', stderr);
+            } else {
+                console.log(stdout);
+                console.log(stderr);
+            }        
         });
     });
 }); 
@@ -867,9 +903,9 @@ program
   });
 }); 
 
-asciify('pressless', {font: 'larry3d', maxWidth: 75}, function (err, result) {
+asciify('pressless', {font: 'larry3d', maxWidth: 75}, function (err, result) {    
     result = result.toString().replace('                                                                 ', "                ---helping wordpress cost less---");
-    console.log(result);
+    if (process.argv[2] !== 'exportdb') console.log(result);
     if (process.argv.length == 2) program.outputHelp(); 
     program.parse(process.argv);
 });
