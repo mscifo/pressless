@@ -65,7 +65,7 @@ Pressless also requires AWS API credentials that have the following policy grant
                 "arn:aws:apigateway:*::/restapis/*",
                 "arn:aws:apigateway:*::/restapis/*/*"
             ]
-        },      
+        },
         {
             "Effect": "Allow",
             "Action": [
@@ -105,7 +105,7 @@ Pressless also requires AWS API credentials that have the following policy grant
                 "cloudformation:DeleteStack"
             ],
             "Resource": "arn:aws:cloudformation:*:*:stack/pl-*"
-        }        
+        }
     ]
 }
 ```
@@ -126,15 +126,15 @@ npm install -g pressless
 pressless
 ```
 ```
-                                         ___                              
-                                        /\_ \                             
- _____    _ __     __     ____    ____  \//\ \       __     ____    ____  
-/\ '__`\ /\`'__\ /'__`\  /',__\  /',__\   \ \ \    /'__`\  /',__\  /',__\ 
+                                         ___
+                                        /\_ \
+ _____    _ __     __     ____    ____  \//\ \       __     ____    ____
+/\ '__`\ /\`'__\ /'__`\  /',__\  /',__\   \ \ \    /'__`\  /',__\  /',__\
 \ \ \L\ \\ \ \/ /\  __/ /\__, `\/\__, `\   \_\ \_ /\  __/ /\__, `\/\__, `\
  \ \ ,__/ \ \_\ \ \____\\/\____/\/\____/   /\____\\ \____\\/\____/\/\____/
-  \ \ \/   \/_/  \/____/ \/___/  \/___/    \/____/ \/____/ \/___/  \/___/ 
-   \ \_\                ---helping wordpress cost less--- 
-    \/_/                                                                  
+  \ \ \/   \/_/  \/____/ \/___/  \/___/    \/____/ \/____/ \/___/  \/___/
+   \ \_\                ---helping wordpress cost less---
+    \/_/
 
 
   Usage:  [options] [command]

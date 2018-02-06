@@ -83,11 +83,11 @@ program
     if (!fs.existsSync('wp-config.php')) {
         return console.log('Pressless: Unable to find a valid Wordpress installation.  Please run pressless inside your Wordpress directory.');
     }
- 
+
     if (domain.toLowerCase() == website_bucket.toLowerCase()) {
         return console.log('Pressless: <domain> and <website_bucket> must be different.');
     }
- 
+
     if (!tld.isValid(domain.toLowerCase())) {
         return console.log('Pressless: ' + domain + ' is not a valid domain.');
     }
@@ -104,7 +104,7 @@ program
         var dsn = new DSNParser(options.dsn);
         if (!dsn.get('host') || !dsn.get('user') || !dsn.get('database')) {
             return console.log('Pressless: ' + options.dsn + ' is not a DSN!');
-        }     
+        }
     }
 
     console.log('Pressless: Checking size of "wp-content/uploads"...');
@@ -170,7 +170,7 @@ provider:
         - 'arn:aws:s3:::${website_bucket}'
         - 'arn:aws:s3:::${website_bucket}/*'
         - 'arn:aws:s3:::${rootWebsiteBucket}'
-        - 'arn:aws:s3:::${rootWebsiteBucket}/*'        
+        - 'arn:aws:s3:::${rootWebsiteBucket}/*'
     - Effect: 'Allow'
       Action:
         - 'rds-db:connect'
@@ -236,7 +236,7 @@ custom:
       - 'image/*'
       - 'video/mpeg'
       - 'video/ogg'
-      - 'video/webm' 
+      - 'video/webm'
 
 functions:
   f:
@@ -247,7 +247,7 @@ functions:
       - http: ANY {proxy+}
     timeout: 300`;
 
-    // check for existance of ACM certificate, otherwise request one
+    // check for existence of ACM certificate, otherwise request one
     const slsDomainManager = new ServerlessDomainManager({cli: {log: console.log}, providers: awsProvider, service: {provider: {region: 'us-east-1'}, custom: {customDomain: {domainName: domain, certificateName: options.certificate}}}});
     slsDomainManager.initializeVariables();
     try {
@@ -281,7 +281,7 @@ functions:
 
     console.log('Pressless: Installing dependencies...');
     // setting explicit path for npm install avoids https://github.com/ForbesLindesay/spawn-sync/issues/42 in some instances
-    var nodePath = path.dirname(shell.which('node').toString()); 
+    var nodePath = path.dirname(shell.which('node').toString());
     var npmInstall = shell.exec(`npm install`, {silent: false}).stdout;
 
     console.log(`Pressless: Creating s3 bucket for serverless deployment: pressless-deploys-${website_bucket}...`);
@@ -303,7 +303,7 @@ functions:
             console.log('Pressless: ', err);
         });
     });
-}); 
+});
 
 program
   .command('domain')
@@ -328,7 +328,7 @@ program
             console.log('Pressless: ', err);
         });
     });
-}); 
+});
 
 program
   .command('copydb <dsn>')
@@ -346,7 +346,7 @@ program
     var dsn = new DSNParser(dsn);
     if (!dsn.get('host') || !dsn.get('user') || !dsn.get('password') || !dsn.get('database')) {
         return console.log('Pressless: Invalid DSN!');
-    }     
+    }
 
     console.log('Pressless: Dumping database...');
 
@@ -357,18 +357,18 @@ program
     var matches = wpConfig.toString().match(/^define\(\s*['"]+DB_PASSWORD['"]+, ['"]+(.*?)['"]+/m);
     if (matches && matches[1]) { fromDatabase.password = matches[1]; }
     var matches = wpConfig.toString().match(/^define\(\s*['"]+DB_HOST['"]+, ['"]+(.*?)['"]+/m);
-    if (matches && matches[1]) { fromDatabase.host = matches[1]; }    
+    if (matches && matches[1]) { fromDatabase.host = matches[1]; }
     var matches = wpConfig.toString().match(/^define\(\s*['"]+DB_NAME['"]+, ['"]+(.*?)['"]+/m);
-    if (matches && matches[1]) { 
-        fromDatabase.database = matches[1]; 
+    if (matches && matches[1]) {
+        fromDatabase.database = matches[1];
     } else {
         var matches = wpConfig.toString().match(/^define\(['"]+DB_NAME['"]+, Evolution::getDbName\(['"]+(.*?)['"]+/m);
-        if (matches && matches[1]) { fromDatabase.database = matches[1] + '_production'; }    
+        if (matches && matches[1]) { fromDatabase.database = matches[1] + '_production'; }
     }
 
     if (!fromDatabase.host || !fromDatabase.user || !fromDatabase.database) {
         return console.log('Pressless: Missing database config from wp-config.php!');
-    } 
+    }
 
     const dumpSqlFileName = os.tmpdir() + '/pressless' + new Date().getTime() + '.sql';
     if (!fs.existsSync(path.dirname(dumpSqlFileName))) {
@@ -396,7 +396,7 @@ program
             console.log('Pressless: Database successfully copied.')
         });
     });
-}); 
+});
 
 program
   .command('exportdb <username>')
@@ -428,10 +428,10 @@ program
             } else {
                 console.log(stdout);
                 console.log(stderr);
-            }        
+            }
         });
     });
-}); 
+});
 
 program
   .command('deploy')
@@ -455,18 +455,18 @@ program
     const stage = options.env || 'O';  // default stage must be a string since serverless will upcase it
 
     if (!stage || stage == '_' || !/^[A-Za-z0-9]+$/.test(stage) || /^\d+$/.test(stage)) {
-        return console.log('Pressless: Environemnt "' + stage + '" is not valid.  Only allows "a-zA-Z0-9_", must be a string (not only numbers) and must not be "_".');
+        return console.log('Pressless: Environment "' + stage + '" is not valid.  Only allows "a-zA-Z0-9_", must be a string (not only numbers) and must not be "_".');
     }
 
     // support for Evolution (https://github.com/evolution/wordpress)
     var wpConfig = fs.readFileSync('wp-config.php').toString();
-    const isEvolution = (wpConfig.indexOf('Evolution.php') > 0 && fs.existsSync('../Evolution.php')) ? true : false;    
- 
+    const isEvolution = (wpConfig.indexOf('Evolution.php') > 0 && fs.existsSync('../Evolution.php')) ? true : false;
+
     try { fs.unlinkSync(os.tmpdir() + '/wordpress_latest.tar.gz'); } catch (e) {}
     console.log('Pressless: Downloading latest Wordpress release to ' + os.tmpdir() + '...');
     tarball.extractTarballDownload('https://wordpress.org/latest.tar.gz', os.tmpdir() + '/wordpress_latest.tar.gz', '.pressless', {}, function(err, result) {
         if (err) {
-            console.log(err, result); 
+            console.log(err, result);
             return;
         }
 
@@ -479,17 +479,17 @@ program
         fse.copySync(path.resolve(path.dirname(__dirname),'./lib/aws.phar'), '.pressless/aws.phar');
         fse.copySync(path.resolve(path.dirname(__dirname),'./bin/php'), '.pressless/php');
         try { fse.copySync('.invalidate', '.pressless/.invalidate'); } catch (e) {} // list of urls to invalidate cache after wp save
-                                                                               
+
         console.log('Pressless: Importing existing Wordpress site...');
 
         // support for Evolution (https://github.com/evolution/wordpress)
         if (isEvolution) {
             console.log('Pressless: Detected Evolution, including...');
 
-            fse.copySync('../Evolution.php', '.pressless/Evolution.php');    
+            fse.copySync('../Evolution.php', '.pressless/Evolution.php');
             if (fs.existsSync('../lib/ansible/group_vars/all')) {
                 fse.mkdirsSync('.pressless/lib/ansible/group_vars');
-                fse.copySync('../lib/ansible/group_vars/all', '.pressless/lib/ansible/group_vars/all');    
+                fse.copySync('../lib/ansible/group_vars/all', '.pressless/lib/ansible/group_vars/all');
             }
 
             if (fs.existsSync('../composer.json') && !fs.existsSync('../vendor')) {
@@ -524,18 +524,18 @@ program
             fse.copySync('./', '.pressless/wordpress/', {filter: (src, dest) => {
                 // don't cyclical copy, etc
                 return (src.indexOf('.pressless') >= 0 || src.indexOf('.invalidate') >= 0 || src.indexOf('.htaccess') >= 0 || src.indexOf('wp-') === 0 || src.indexOf('index.php') >= 0 || src.indexOf('xmlrpc.php') >= 0) ? false : true;
-            }});  
-        } 
+            }});
+        }
 
         // update wpconfig with new database settings
         if (process.env.PRESSLESS_DB_SSL=='true') wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_NAME['"]+/m, "define('MYSQL_CLIENT_FLAGS', MYSQL_CLIENT_SSL);\ndefine('DB_NAME'");
         wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_NAME['"]+, ['"]+(.*?)['"]+/m, "define('DB_NAME', getenv('PRESSLESS_DB_NAME')?:'$1'");
-        wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_NAME['"]+, Evolution::getDbName\(['"]+(.*?)['"]+\)/m, "define('DB_NAME', getenv('PRESSLESS_DB_NAME')?:'$1'");        
+        wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_NAME['"]+, Evolution::getDbName\(['"]+(.*?)['"]+\)/m, "define('DB_NAME', getenv('PRESSLESS_DB_NAME')?:'$1'");
         wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_USER['"]+, ['"]+(.*?)['"]+/m, "define('DB_USER', getenv('PRESSLESS_DB_USER')?:'$1'");
         wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_PASSWORD['"]+, ['"]+(.*?)['"]+/m, "define('DB_PASSWORD', getenv('PRESSLESS_DB_PASSWORD')?:'$1'");
         wpConfig = wpConfig.replace(/^define\(\s*['"]+DB_HOST['"]+, ['"]+(.*?)['"]+/m, "define('DB_HOST', getenv('PRESSLESS_DB_HOST')?:'$1'");
         fs.writeFileSync('.pressless/wordpress/wp-config.php', wpConfig);
-        
+
         async.parallel([
             function(callback) {
                 console.log('Pressless: Installing Jetpack plugin...');
@@ -567,7 +567,7 @@ program
                                 callback(null);
                             });
                     });
-            },            
+            },
             function(callback) {
                 console.log('Pressless: Removing login captcha plugins...');
                 try { fse.removeSync('.pressless/wordpress/wp-content/plugins/login-recaptcha'); } catch (e) {}
@@ -577,7 +577,7 @@ program
             function(callback) {
                 console.log('Pressless: Injecting custom code...');
                 const customCode = `<?php
-// ensure wp url is the pressless domain                
+// ensure wp url is the pressless domain
 function pressless_url() { return 'https://${domain}'; }
 add_filter('pre_option_home', 'pressless_url');
 add_filter('pre_option_siteurl', 'pressless_url');
@@ -585,17 +585,17 @@ add_filter('pre_option_siteurl', 'pressless_url');
 function pressless_canonical($redirect_url, $requested_url = "") { return false; }
 add_filter('redirect_canonical', 'pressless_canonical');
 // catch save events so we can invalidate cache
-function pressless_cache_invalidate($post_id) { 
-    if (false !== wp_is_post_revision($post_id)) return; 
-    global $s3Client; 
+function pressless_cache_invalidate($post_id) {
+    if (false !== wp_is_post_revision($post_id)) return;
+    global $s3Client;
     if (WP_DEBUG) error_log('Deleting '.str_replace(WP_SITEURL, 's3://' . PRESSLESS_S3_WEBSITE_BUCKET, get_permalink($post_id)).'index.html');
-    $s3Client->deleteObject(['Bucket' => PRESSLESS_S3_WEBSITE_BUCKET, 'Key' => str_replace(WP_SITEURL.'/', '', get_permalink($post_id)).'index.html']); 
-    if (file_exists('/var/task/.invalidate')) foreach (file('/var/task/.invalidate') as $path) { 
+    $s3Client->deleteObject(['Bucket' => PRESSLESS_S3_WEBSITE_BUCKET, 'Key' => str_replace(WP_SITEURL.'/', '', get_permalink($post_id)).'index.html']);
+    if (file_exists('/var/task/.invalidate')) foreach (file('/var/task/.invalidate') as $path) {
         if (strpos($path, '/') === 0) {
             if (WP_DEBUG) error_log('Deleting s3://' . PRESSLESS_S3_WEBSITE_BUCKET . rtrim($path) .'index.html');
-            $s3Client->deleteObject(['Bucket' => PRESSLESS_S3_WEBSITE_BUCKET, 'Key' => rtrim(substr($path,1)).'index.html']); 
+            $s3Client->deleteObject(['Bucket' => PRESSLESS_S3_WEBSITE_BUCKET, 'Key' => rtrim(substr($path,1)).'index.html']);
         }
-    } 
+    }
 }
 add_action('save_post', 'pressless_cache_invalidate');
 `;
@@ -626,7 +626,7 @@ add_action('save_post', 'pressless_cache_invalidate');
                 + ' --stage '+stage
                 + ' --region '+region
                 + (options.verbose?' --verbose':''), {async:true});
-            child.stdout.on('finish', function(data) {        
+            child.stdout.on('finish', function(data) {
                 console.log("\nPressless: Your site URL is https://" + domain);
 
                 const slsDomainManager = new ServerlessDomainManager({providers: awsProvider, service: {provider: {region: region}, custom: {customDomain: {domainName: domain}}}});
@@ -695,7 +695,7 @@ add_action('save_post', 'pressless_cache_invalidate');
             });
         });
     });
-}); 
+});
 
 program
 .command('copyuploads')
@@ -727,7 +727,7 @@ program
   uploader.on('error', function(err) {
     console.error("Pressless: Unable to copy files to S3:", err.message);
     if (err.message == 'Access Denied') {
-        console.log("\nYou need to ensure your AWS credentials have the appropriate S3 permissions to upload to s3://" + bucket);        
+        console.log("\nYou need to ensure your AWS credentials have the appropriate S3 permissions to upload to s3://" + bucket);
         process.exit(1);
     }
   });
@@ -742,18 +742,18 @@ program
     progressBar.stop();
     console.log("Pressless: Finished");
     process.exit(0);
-  });  
-}); 
+  });
+});
 
 program
   .command('logs')
   .description('Watch lambda logs')
   .option("-e, --env <env>", "Environment to use (defaults to 'O')")
   .option("-r, --region <region>", "Region to use (defaults to 'us-east-1')")
-  .option("-s, --startTime <startTime>", "A specific unit in time to start fetching logs") 
-  .option("-t, --tail", "Optionally tail the logs and keep listening for new logs") 
-  .option("-f, --filter <filter>", "Specify a filter string to filter the log output") 
-  .option("-i, --interval <interval>", "Control the interval at which the framework polls the logs when tailing (default 1000ms)") 
+  .option("-s, --startTime <startTime>", "A specific unit in time to start fetching logs")
+  .option("-t, --tail", "Optionally tail the logs and keep listening for new logs")
+  .option("-f, --filter <filter>", "Specify a filter string to filter the log output")
+  .option("-i, --interval <interval>", "Control the interval at which the framework polls the logs when tailing (default 1000ms)")
   .action(function(options) {
     if (!fs.existsSync('.pressless/serverless.yml')) {
         return console.log('Pressless: You must first call "pressless setup".');
@@ -763,7 +763,7 @@ program
     const stage = options.env || 'O';  // default stage must be a string since serverless will upcase it
 
     if (!stage || stage == '_' || !/^[A-Za-z0-9]+$/.test(stage) || /^\d+$/.test(stage)) {
-        return console.log('Pressless: Environemnt "' + stage + '" is not valid.  Only allows "a-zA-Z0-9_", must be a string (not only numbers) and must not be "_".');
+        return console.log('Pressless: Environment "' + stage + '" is not valid.  Only allows "a-zA-Z0-9_", must be a string (not only numbers) and must not be "_".');
     }
 
     shell.cd('.pressless');
@@ -775,10 +775,10 @@ program
         + (options.filter?' --filter ' + options.filter:'')
         + (options.tail?' --tail':'')
         + (options.interval?' --interval ' + options.interval:''), {async:true});
-    child.stdout.on('data', function(data) {        
+    child.stdout.on('data', function(data) {
         console.log(data);
     });
-}); 
+});
 
 program
   .command('test <stage> <request_path>')
@@ -787,7 +787,7 @@ program
     if (!fs.existsSync('.pressless/serverless.yml')) {
         return console.log('Pressless: You must first call "pressless setup".');
     }
- 
+
     const domain = getDomain();
     const functionName = domain.replace(/[\.\_\']/g, '-');
     const eventData = '{"path":"' + requestPath + '","httpMethod":"GET","headers":{"Host":"' + domain + '"},"queryStringParameters":null}';
@@ -823,7 +823,7 @@ program
             var item = items.pop();
             if (item.status == 'redirected' && item.stateData.code == 307) {
                 console.log('Reprocessing ' + queueItem.url + ' since it was redirected');
-                crawler.queueURL(queueItem.url, queueItem.referrer, true);    
+                crawler.queueURL(queueItem.url, queueItem.referrer, true);
             }
         });
     });
@@ -841,7 +841,7 @@ program
         );
     });
     crawler.start();
-}); 
+});
 
 program
 .command('invalidate')
@@ -859,7 +859,7 @@ program
   function listAllKeys(token, cb) {
       var opts = { Bucket: getWebsiteBucket() };
       if (token) opts.ContinuationToken = token;
-  
+
       s3.listObjectsV2(opts, function(err, data) {
           allKeys = allKeys.concat(data.Contents.map(function(obj) { return obj.Key; }));
           return data.IsTruncated ? listAllKeys(data.NextContinuationToken, cb): cb();
@@ -870,19 +870,19 @@ program
       if (!keys || keys.length == 0) return;
 
       var params = {
-          Bucket: getWebsiteBucket(), 
+          Bucket: getWebsiteBucket(),
           Delete: {
               Objects: keys,
               Quiet: false
           }
       };
-    
+
       s3.deleteObjects(params, function(err, data) {
           if (err) console.log(err);
           if (data && data.Errors && data.Errors.size > 0) console.log(data.Errors);
-      });      
+      });
   }
-  
+
   listAllKeys(null, function() {
       var count = 0;
       var chunkKeys = [];
@@ -895,17 +895,17 @@ program
           if (count < 1000) return;
 
           deleteKeys(chunkKeys);
-          
+
           count = 0;
           chunkKeys = [];
       });
       deleteKeys(chunkKeys);
   });
-}); 
+});
 
-asciify('pressless', {font: 'larry3d', maxWidth: 75}, function (err, result) {    
+asciify('pressless', {font: 'larry3d', maxWidth: 75}, function (err, result) {
     result = result.toString().replace('                                                                 ', "                ---helping wordpress cost less---");
     if (process.argv[2] !== 'exportdb') console.log(result);
-    if (process.argv.length == 2) program.outputHelp(); 
+    if (process.argv.length == 2) program.outputHelp();
     program.parse(process.argv);
 });
