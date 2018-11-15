@@ -4,6 +4,8 @@
 [![language][badge-nodejs]](http://nodejs.org)
 [![license][badge-license]](LICENSE)
 
+## This project is no longer maintained.  [Bref](https://github.com/mnapoli/bref) is recommended as a replacement.
+
 A tool that migrates an existing Wordpress site into a fully functioning Serverless site, powered by AWS (Cloudfront, API Gateway, Lambda, S3).
 
 Pressless will:
